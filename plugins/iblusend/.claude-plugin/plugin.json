@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "iblusend",
+  "displayName": "iBluSend",
+  "version": "0.1.0",
+  "description": "Safely triage conversations, manage contacts, and send confirmed iMessages and SMS through one consented workspace.",
+  "author": {
+    "name": "iBluSend",
+    "email": "support@iblusend.com",
+    "url": "https://iblusend.com"
+  },
+  "homepage": "https://iblusend.com/developers",
+  "repository": "https://github.com/ZachPulse/iblusend-plugins",
+  "license": "MIT",
+  "keywords": [
+    "imessage",
+    "sms",
+    "messaging",
+    "contacts",
+    "inbox",
+    "crm"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

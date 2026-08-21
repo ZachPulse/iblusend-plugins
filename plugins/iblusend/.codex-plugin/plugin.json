@@ -1,0 +1,52 @@
+{
+  "name": "iblusend",
+  "version": "0.1.0",
+  "description": "Safely triage conversations, manage contacts, and send confirmed iMessages and SMS through one consented workspace.",
+  "author": {
+    "name": "iBluSend",
+    "email": "support@iblusend.com",
+    "url": "https://iblusend.com"
+  },
+  "homepage": "https://iblusend.com/developers",
+  "repository": "https://github.com/ZachPulse/iblusend-plugins",
+  "license": "MIT",
+  "keywords": [
+    "imessage",
+    "sms",
+    "messaging",
+    "contacts",
+    "inbox",
+    "crm"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "iBluSend",
+    "shortDescription": "Safely triage conversations, manage contacts, and send confirmed iMessages and SMS through one consented workspace.",
+    "longDescription": "Connect one iBluSend workspace to inspect conversations, contacts, devices, groups, delivery status, opt-out state, and bot status. Draft and send only after showing the exact destination and content for approval.",
+    "developerName": "iBluSend",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://iblusend.com",
+    "privacyPolicyURL": "https://iblusend.com/privacy",
+    "termsOfServiceURL": "https://iblusend.com/terms",
+    "defaultPrompt": [
+      "Triage my iBluSend inbox and flag conversations that need a reply.",
+      "Draft a reply for one contact, then wait for my approval before sending.",
+      "Check this contact's opt-out status and show available sending devices."
+    ],
+    "brandColor": "#3B82F6",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png",
+    "logoDark": "./assets/logo-dark.png",
+    "screenshots": [
+      "./assets/screenshot-inbox-triage.png",
+      "./assets/screenshot-safe-send.png",
+      "./assets/screenshot-compliance.png"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "iblusend-plugins",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Official iBluSend plugin packages and white-label generator for OpenAI and Claude.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "generate": "node scripts/generate-brand-package.mjs --brand brands/iblusend.json --output .",
+    "generate:check": "node scripts/generate-brand-package.mjs --brand brands/iblusend.json --output . --check",
+    "generate:example": "node scripts/generate-brand-package.mjs --brand brands/imessage-sender.example.json --output dist/imessage-sender",
+    "validate": "node scripts/validate-packages.mjs",
+    "test": "node --test tests/*.test.mjs && npm run validate && npm run generate:check"
+  },
+  "license": "MIT"
+}

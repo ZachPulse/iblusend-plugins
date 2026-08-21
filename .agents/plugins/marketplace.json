@@ -1,0 +1,20 @@
+{
+  "name": "iblusend-official",
+  "interface": {
+    "displayName": "iBluSend Official"
+  },
+  "plugins": [
+    {
+      "name": "iblusend",
+      "source": {
+        "source": "local",
+        "path": "./plugins/iblusend"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

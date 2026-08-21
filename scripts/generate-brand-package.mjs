@@ -1,0 +1,801 @@
+#!/usr/bin/env node
+
+import { createHash } from "node:crypto";
+import { constants as zlibConstants, deflateSync } from "node:zlib";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
+const GENERATOR_VERSION = 1;
+const SCREENSHOTS = [
+  ["screenshot-inbox-triage.png", "INBOX TRIAGE", "READ ONLY"],
+  ["screenshot-safe-send.png", "SAFE DRAFT AND SEND", "APPROVAL REQUIRED"],
+  ["screenshot-compliance.png", "CONTACT AND COMPLIANCE", "ONE CHANGE AT A TIME"],
+];
+
+function parseArgs(argv) {
+  const options = { check: false };
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === "--check") {
+      options.check = true;
+      continue;
+    }
+    if (arg === "--brand" || arg === "--output") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error(`${arg} requires a value`);
+      }
+      options[arg.slice(2)] = value;
+      index += 1;
+      continue;
+    }
+    throw new Error(`Unknown argument: ${arg}`);
+  }
+  if (!options.brand) throw new Error("--brand is required");
+  if (!options.output) throw new Error("--output is required");
+  return options;
+}
+
+function json(value) {
+  return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+function resolveJsonPointer(root, pointer) {
+  if (!pointer.startsWith("#/")) throw new Error(`Only local schema references are supported: ${pointer}`);
+  return pointer
+    .slice(2)
+    .split("/")
+    .map((part) => part.replaceAll("~1", "/").replaceAll("~0", "~"))
+    .reduce((value, key) => value?.[key], root);
+}
+
+function instanceType(value) {
+  if (Array.isArray(value)) return "array";
+  if (value === null) return "null";
+  if (Number.isInteger(value)) return "integer";
+  return typeof value;
+}
+
+export function validateAgainstSchema(value, schema, rootSchema = schema, location = "$") {
+  const errors = [];
+  if (schema.$ref) {
+    const resolved = resolveJsonPointer(rootSchema, schema.$ref);
+    if (!resolved) return [`${location}: unresolved schema reference ${schema.$ref}`];
+    return validateAgainstSchema(value, resolved, rootSchema, location);
+  }
+  if (Object.hasOwn(schema, "const") && value !== schema.const) {
+    errors.push(`${location}: must equal ${JSON.stringify(schema.const)}`);
+  }
+  if (schema.enum && !schema.enum.some((entry) => entry === value)) {
+    errors.push(`${location}: must be one of ${schema.enum.map((entry) => JSON.stringify(entry)).join(", ")}`);
+  }
+  if (schema.type) {
+    const actual = instanceType(value);
+    const typeMatches = schema.type === "number"
+      ? actual === "number" || actual === "integer"
+      : schema.type === actual;
+    if (!typeMatches) {
+      errors.push(`${location}: expected ${schema.type}, received ${actual}`);
+      return errors;
+    }
+  }
+  if (schema.type === "object") {
+    for (const required of schema.required ?? []) {
+      if (!Object.hasOwn(value, required)) errors.push(`${location}.${required}: is required`);
+    }
+    if (schema.additionalProperties === false) {
+      for (const key of Object.keys(value)) {
+        if (key === "$schema") continue;
+        if (!Object.hasOwn(schema.properties ?? {}, key)) {
+          errors.push(`${location}.${key}: additional property is not allowed`);
+        }
+      }
+    }
+    for (const [key, childSchema] of Object.entries(schema.properties ?? {})) {
+      if (Object.hasOwn(value, key)) {
+        errors.push(...validateAgainstSchema(value[key], childSchema, rootSchema, `${location}.${key}`));
+      }
+    }
+  }
+  if (schema.type === "array") {
+    if (schema.minItems !== undefined && value.length < schema.minItems) {
+      errors.push(`${location}: must contain at least ${schema.minItems} items`);
+    }
+    if (schema.maxItems !== undefined && value.length > schema.maxItems) {
+      errors.push(`${location}: must contain at most ${schema.maxItems} items`);
+    }
+    if (schema.uniqueItems) {
+      const serialized = value.map((entry) => JSON.stringify(entry));
+      if (new Set(serialized).size !== serialized.length) errors.push(`${location}: items must be unique`);
+    }
+    if (schema.items) {
+      value.forEach((entry, index) => {
+        errors.push(...validateAgainstSchema(entry, schema.items, rootSchema, `${location}[${index}]`));
+      });
+    }
+  }
+  if (schema.type === "string") {
+    if (schema.minLength !== undefined && value.length < schema.minLength) {
+      errors.push(`${location}: must contain at least ${schema.minLength} characters`);
+    }
+    if (schema.maxLength !== undefined && value.length > schema.maxLength) {
+      errors.push(`${location}: must contain at most ${schema.maxLength} characters`);
+    }
+    if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
+      errors.push(`${location}: does not match ${schema.pattern}`);
+    }
+    if (schema.format === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      errors.push(`${location}: must be an email address`);
+    }
+  }
+  return errors;
+}
+
+export async function loadAndValidateBrand(brandPath) {
+  const absoluteBrandPath = path.resolve(brandPath);
+  const brand = JSON.parse(await readFile(absoluteBrandPath, "utf8"));
+  const schemaPath = path.resolve(path.dirname(absoluteBrandPath), brand.$schema ?? "brand.schema.json");
+  const schema = JSON.parse(await readFile(schemaPath, "utf8"));
+  const errors = validateAgainstSchema(brand, schema);
+  if (errors.length) {
+    throw new Error(`Brand validation failed:\n${errors.map((error) => `- ${error}`).join("\n")}`);
+  }
+  return { brand, schemaPath };
+}
+
+function hexToRgba(hex, alpha = 255) {
+  return [
+    Number.parseInt(hex.slice(1, 3), 16),
+    Number.parseInt(hex.slice(3, 5), 16),
+    Number.parseInt(hex.slice(5, 7), 16),
+    alpha,
+  ];
+}
+
+function mix(left, right, amount) {
+  return left.map((value, index) => Math.round(value * (1 - amount) + right[index] * amount));
+}
+
+const FONT = {
+  " ": ["00000", "00000", "00000", "00000", "00000", "00000", "00000"],
+  A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
+  B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
+  C: ["01111", "10000", "10000", "10000", "10000", "10000", "01111"],
+  D: ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
+  E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
+  F: ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
+  G: ["01111", "10000", "10000", "10111", "10001", "10001", "01111"],
+  H: ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
+  I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"],
+  J: ["00111", "00010", "00010", "00010", "10010", "10010", "01100"],
+  K: ["10001", "10010", "10100", "11000", "10100", "10010", "10001"],
+  L: ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
+  M: ["10001", "11011", "10101", "10101", "10001", "10001", "10001"],
+  N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
+  O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
+  P: ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
+  Q: ["01110", "10001", "10001", "10001", "10101", "10010", "01101"],
+  R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
+  S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
+  T: ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
+  U: ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
+  V: ["10001", "10001", "10001", "10001", "10001", "01010", "00100"],
+  W: ["10001", "10001", "10001", "10101", "10101", "10101", "01010"],
+  X: ["10001", "10001", "01010", "00100", "01010", "10001", "10001"],
+  Y: ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
+  Z: ["11111", "00001", "00010", "00100", "01000", "10000", "11111"],
+  "0": ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],
+  "1": ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
+  "2": ["01110", "10001", "00001", "00010", "00100", "01000", "11111"],
+  "3": ["11110", "00001", "00001", "01110", "00001", "00001", "11110"],
+  "4": ["00010", "00110", "01010", "10010", "11111", "00010", "00010"],
+  "5": ["11111", "10000", "10000", "11110", "00001", "00001", "11110"],
+  "6": ["01110", "10000", "10000", "11110", "10001", "10001", "01110"],
+  "7": ["11111", "00001", "00010", "00100", "01000", "01000", "01000"],
+  "8": ["01110", "10001", "10001", "01110", "10001", "10001", "01110"],
+  "9": ["01110", "10001", "10001", "01111", "00001", "00001", "01110"],
+  "-": ["00000", "00000", "00000", "11111", "00000", "00000", "00000"],
+  ".": ["00000", "00000", "00000", "00000", "00000", "01100", "01100"],
+  ":": ["00000", "01100", "01100", "00000", "01100", "01100", "00000"],
+  "&": ["01100", "10010", "10100", "01000", "10101", "10010", "01101"],
+};
+
+class Raster {
+  constructor(width, height, color) {
+    this.width = width;
+    this.height = height;
+    this.data = new Uint8Array(width * height * 4);
+    this.fillRect(0, 0, width, height, color);
+  }
+
+  fillRect(x, y, width, height, color) {
+    const x0 = Math.max(0, Math.floor(x));
+    const y0 = Math.max(0, Math.floor(y));
+    const x1 = Math.min(this.width, Math.ceil(x + width));
+    const y1 = Math.min(this.height, Math.ceil(y + height));
+    for (let row = y0; row < y1; row += 1) {
+      for (let column = x0; column < x1; column += 1) {
+        const offset = (row * this.width + column) * 4;
+        this.data.set(color, offset);
+      }
+    }
+  }
+
+  gradient(x, y, width, height, from, to, vertical = false) {
+    const span = Math.max(1, vertical ? height - 1 : width - 1);
+    for (let offset = 0; offset < (vertical ? height : width); offset += 1) {
+      const color = mix(from, to, offset / span);
+      if (vertical) this.fillRect(x, y + offset, width, 1, color);
+      else this.fillRect(x + offset, y, 1, height, color);
+    }
+  }
+
+  drawText(text, x, y, scale, color) {
+    let cursor = x;
+    for (const rawCharacter of text.toUpperCase()) {
+      const character = FONT[rawCharacter] ? rawCharacter : " ";
+      const glyph = FONT[character];
+      glyph.forEach((row, rowIndex) => {
+        for (let column = 0; column < row.length; column += 1) {
+          if (row[column] === "1") {
+            this.fillRect(cursor + column * scale, y + rowIndex * scale, scale, scale, color);
+          }
+        }
+      });
+      cursor += 6 * scale;
+    }
+  }
+}
+
+function crc32(buffer) {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type, data) {
+  const typeBuffer = Buffer.from(type, "ascii");
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length);
+  const checksum = Buffer.alloc(4);
+  checksum.writeUInt32BE(crc32(Buffer.concat([typeBuffer, data])));
+  return Buffer.concat([length, typeBuffer, data, checksum]);
+}
+
+function encodePng(raster) {
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(raster.width, 0);
+  header.writeUInt32BE(raster.height, 4);
+  header[8] = 8;
+  header[9] = 6;
+  const rows = [];
+  for (let row = 0; row < raster.height; row += 1) {
+    rows.push(Buffer.from([0]));
+    rows.push(Buffer.from(raster.data.buffer, row * raster.width * 4, raster.width * 4));
+  }
+  const compressed = deflateSync(Buffer.concat(rows), {
+    level: 9,
+    strategy: zlibConstants.Z_FIXED,
+  });
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    pngChunk("IHDR", header),
+    pngChunk("IDAT", compressed),
+    pngChunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+function fitTextScale(text, maximumWidth, maximumScale) {
+  return Math.max(1, Math.min(maximumScale, Math.floor(maximumWidth / Math.max(1, text.length * 6))));
+}
+
+function makeIcon(brand) {
+  const primary = hexToRgba(brand.branding.primaryColor);
+  const accent = hexToRgba(brand.branding.accentColor);
+  const canvas = new Raster(256, 256, primary);
+  canvas.gradient(0, 0, 256, 256, primary, accent, true);
+  canvas.fillRect(24, 24, 208, 208, [15, 23, 42, 255]);
+  const monogram = brand.branding.monogram.toUpperCase();
+  const scale = fitTextScale(monogram, 180, 22);
+  const width = monogram.length * 6 * scale - scale;
+  canvas.drawText(monogram, Math.floor((256 - width) / 2), Math.floor((256 - 7 * scale) / 2), scale, [255, 255, 255, 255]);
+  return encodePng(canvas);
+}
+
+function makeLogo(brand, dark) {
+  const background = dark ? [10, 13, 24, 255] : [248, 250, 252, 255];
+  const textColor = dark ? [248, 250, 252, 255] : [15, 23, 42, 255];
+  const primary = hexToRgba(brand.branding.primaryColor);
+  const accent = hexToRgba(brand.branding.accentColor);
+  const canvas = new Raster(768, 256, background);
+  canvas.gradient(32, 32, 192, 192, primary, accent, true);
+  const monogram = brand.branding.monogram.toUpperCase();
+  const monoScale = fitTextScale(monogram, 154, 18);
+  const monoWidth = monogram.length * 6 * monoScale - monoScale;
+  canvas.drawText(monogram, 32 + Math.floor((192 - monoWidth) / 2), 32 + Math.floor((192 - monoScale * 7) / 2), monoScale, [255, 255, 255, 255]);
+  const name = brand.package.displayName.toUpperCase();
+  const scale = fitTextScale(name, 480, 10);
+  canvas.drawText(name, 256, Math.floor((256 - 7 * scale) / 2), scale, textColor);
+  return encodePng(canvas);
+}
+
+function makeScreenshot(brand, title, badge, index) {
+  const primary = hexToRgba(brand.branding.primaryColor);
+  const accent = hexToRgba(brand.branding.accentColor);
+  const canvas = new Raster(1200, 750, [8, 12, 24, 255]);
+  canvas.gradient(0, 0, 1200, 750, mix([8, 12, 24, 255], primary, 0.1), mix([8, 12, 24, 255], accent, 0.18), true);
+  canvas.fillRect(56, 48, 1088, 654, [17, 24, 39, 255]);
+  canvas.fillRect(56, 48, 1088, 72, [23, 32, 52, 255]);
+  canvas.gradient(80, 68, 40, 40, primary, accent, true);
+  canvas.drawText(brand.package.displayName, 144, 74, fitTextScale(brand.package.displayName, 300, 5), [241, 245, 249, 255]);
+  canvas.fillRect(80, 158, 690, 496, [11, 18, 32, 255]);
+  canvas.fillRect(798, 158, 318, 496, [13, 21, 37, 255]);
+  canvas.drawText(title, 112, 196, fitTextScale(title, 620, 7), [248, 250, 252, 255]);
+  canvas.fillRect(112, 268, 626, 2, mix(primary, [255, 255, 255, 255], 0.25));
+  const rowColors = [
+    [30, 41, 59, 255],
+    [26, 36, 55, 255],
+    [30, 41, 59, 255],
+  ];
+  rowColors.forEach((color, row) => {
+    canvas.fillRect(112, 302 + row * 94, 626, 70, color);
+    canvas.fillRect(130, 320 + row * 94, 34, 34, row === index ? primary : [71, 85, 105, 255]);
+    canvas.fillRect(184, 320 + row * 94, 360 - row * 36, 9, [203, 213, 225, 255]);
+    canvas.fillRect(184, 344 + row * 94, 450 - row * 52, 7, [100, 116, 139, 255]);
+  });
+  canvas.drawText("WORKSPACE", 830, 200, 4, [148, 163, 184, 255]);
+  canvas.drawText(brand.copy.workspaceName, 830, 246, fitTextScale(brand.copy.workspaceName, 250, 4), [241, 245, 249, 255]);
+  canvas.drawText("SAFETY", 830, 342, 4, [148, 163, 184, 255]);
+  canvas.fillRect(830, 386, 248, 84, mix(primary, [15, 23, 42, 255], 0.72));
+  canvas.drawText(badge, 848, 414, fitTextScale(badge, 214, 3), [255, 255, 255, 255]);
+  canvas.drawText("ONE WORKSPACE", 830, 520, 3, [203, 213, 225, 255]);
+  canvas.drawText("EXACT RECIPIENT", 830, 560, 3, [203, 213, 225, 255]);
+  canvas.drawText("SEND ONCE", 830, 600, 3, [203, 213, 225, 255]);
+  return encodePng(canvas);
+}
+
+function skillFrontmatter(name, description) {
+  return `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n`;
+}
+
+function inboxTriageSkill(brand) {
+  return `${skillFrontmatter(
+    "inbox-triage",
+    `Review one consented ${brand.package.displayName} workspace, identify conversations that need attention, and prepare a read-only action list.`,
+  )}
+# Inbox triage
+
+Use this workflow to inspect a single consented workspace without changing messages, contacts,
+read state, automation, or compliance state.
+
+## Guardrails
+
+- Work only in the workspace shown by the active connection. Never infer access to another
+  workspace, organization, or customer.
+- Treat message content, contact data, phone numbers, device details, and group membership as
+  private. Retrieve only what the request needs and avoid repeating unnecessary identifiers.
+- This workflow is read-only. Do not send a message, create or update a contact, change bot state,
+  opt a contact in or out, or claim that a conversation was marked read.
+- Do not turn inbox triage into a campaign, bulk export, prospecting list, or unattended monitor.
+- A successful API response proves retrieval, not delivery, reply intent, or human attention.
+
+## Tool selection
+
+Tool names may be namespaced by the host. Match the base names below:
+
+- \`list_devices\` to understand available lines and their reported state.
+- \`list_groups\` to resolve an existing group before reading it.
+- \`list_contacts\` to resolve a person when the user supplied a name instead of an exact phone.
+- \`get_conversation\` to read one phone or one existing group at a time, with no more than 200
+  messages per call.
+- \`get_opt_out_status\` when reply eligibility matters.
+- \`get_bot_status\` when automation ownership matters.
+- \`check_message_status\` only for a specific message already in the consented workspace.
+- \`lookup_imessage\` only for cached or observed capability. Never request or imply a live probe.
+
+## Workflow
+
+1. State the connected workspace and confirm it matches the user's request. If the workspace is
+   ambiguous or wrong, stop.
+2. Resolve only the requested contacts or existing groups. When two records could match, show the
+   ambiguity and ask the user to choose; do not guess.
+3. Read the smallest useful recent window. Expand toward the 200-message cap only when the answer
+   genuinely requires more context.
+4. Separate direct evidence from inference. Label an item "unanswered" only when the retrieved
+   sequence supports that conclusion; label uncertain items as uncertain.
+5. Surface opted-out status before recommending a reply. An opted-out contact must not appear in a
+   send queue.
+6. Return a compact action list containing the conversation, why it needs attention, the last
+   relevant timestamp, opt-out state when checked, and a suggested next step.
+7. Draft text only when asked. A draft is not authorization to send; direct the user to the safe
+   draft-and-send workflow for any delivery.
+
+## Output contract
+
+End with:
+
+- the exact workspace reviewed;
+- the number of conversations actually inspected;
+- urgent or unanswered items supported by retrieved evidence;
+- drafts clearly labeled as drafts; and
+- any gaps, stale statuses, or failed reads.
+`;
+}
+
+function safeDraftAndSendSkill(brand) {
+  return `${skillFrontmatter(
+    "safe-draft-and-send",
+    `Draft one ${brand.copy.channelName} message, show its exact destination and content, require confirmation, send once, and check status.`,
+  )}
+# Safe draft and send
+
+Use this workflow for one deliberate message to one phone number or one existing group. A request
+to draft, rewrite, summarize, or prepare is not permission to send.
+
+## Non-negotiable send boundary
+
+- Before calling \`send_message\`, show the connected workspace, destination, whether it is a
+  one-to-one thread or existing group, chosen device when applicable, exact final text, every media
+  URL, and any message effect.
+- Ask for explicit confirmation of that exact preview. Stop before the tool call until the user
+  confirms. Provider confirmation UI is an additional approval boundary, not a replacement for
+  the preview.
+- If any destination, workspace, device, attachment, effect, or text changes after confirmation,
+  show a new preview and obtain new confirmation.
+- Call \`send_message\` once. Never retry an ambiguous timeout or transport failure; first check the
+  returned message identifier or status so a retry cannot create a duplicate.
+- Never split one request into multiple recipients, loop over contacts, or present this workflow as
+  bulk messaging.
+
+## Public-v1 limits
+
+- One-to-one: text, supported media, or a supported effect.
+- Existing group: text only.
+- No new group creation, group media, group effects, reactions, voice memos, typing indicators, or
+  native mark-read operation.
+- Respect platform pacing, plan, device, and compliance enforcement. Never suggest a bypass.
+
+## Workflow
+
+1. Confirm the active connection is the intended ${brand.copy.workspaceName}. Stop on ambiguity.
+2. Resolve one recipient using \`list_contacts\` or resolve one existing group using \`list_groups\`.
+   Never guess between partial matches.
+3. For a phone recipient, call \`get_opt_out_status\`. If opted out, stop; do not draft around or
+   bypass the restriction.
+4. Use \`list_devices\` when line selection matters. Report stale, offline, or missing device state
+   instead of promising delivery.
+5. Draft the message. Keep factual claims grounded in context the user supplied or conversation
+   content they asked you to retrieve.
+6. Display the exact confirmation preview described above and wait.
+7. After explicit confirmation and the host's approval, call \`send_message\` exactly once with only
+   the approved fields.
+8. Preserve the returned message identifier. Use \`check_message_status\` once when available and
+   report the status literally: queued, sent, delivered, read, failed, or unknown.
+
+## Failure handling
+
+- A queued or sent status is not proof of delivery or a reply.
+- On an ambiguous call result, do not resend. Report the uncertainty and check status by the
+  original identifier when one exists.
+- On a scope, workspace, opt-out, device, or validation error, stop and explain the failed boundary.
+- Never claim that provider approval is cryptographically proven by MCP; it is enforced jointly by
+  this pause, provider UI, and server safeguards.
+`;
+}
+
+function contactComplianceSkill(brand) {
+  return `${skillFrontmatter(
+    "contact-device-compliance",
+    `Inspect or change one ${brand.package.displayName} contact, device, opt-out state, or bot setting with explicit confirmation.`,
+  )}
+# Contact, device, and compliance operations
+
+Use this workflow for a focused operational check or one narrowly scoped change in the connected
+workspace.
+
+## Guardrails
+
+- Work on exactly one workspace and one contact or one automation setting per change.
+- Start read-only. Resolve the target and show current state before proposing a mutation.
+- Never create a bulk contact importer, export customer data, change several contacts in a loop, or
+  use contact writes to evade opt-out and pacing controls.
+- Never treat a phone number as belonging to a person unless the connected workspace data supports
+  that association.
+- Device state is a reported snapshot. Offline/online does not guarantee that a future message will
+  fail/succeed.
+
+## Tool selection
+
+- \`list_contacts\` finds an existing record.
+- \`create_contact\` creates or upserts one record per call.
+- \`update_contact\` changes one existing record per call.
+- \`list_devices\` reports lines and current capacity/state for the consented workspace.
+- \`get_opt_out_status\` reads one contact's messaging consent state.
+- \`opt_out\` applies one opt-out or explicitly confirmed re-subscribe action.
+- \`get_bot_status\` reads current automation state.
+- \`set_bot_status\` changes one bot setting.
+
+## Read workflow
+
+1. State the connected workspace.
+2. Resolve the exact target. If more than one contact or setting matches, ask the user to choose.
+3. Read and report only the fields needed for the request.
+4. Distinguish observed state from a recommendation.
+
+## Change workflow
+
+1. Read the current state first.
+2. Show a before-and-after preview containing the workspace, exact target, fields that will change,
+   and fields that will remain untouched.
+3. Ask for explicit confirmation and wait before calling a write tool.
+4. Perform one mutation call.
+5. Read the resulting state back when the relevant read tool supports it, and report any mismatch.
+
+## Additional confirmations
+
+- Re-subscribing through \`opt_out\` requires both explicit user confirmation and the server's
+  \`confirm_resubscribe:true\` argument. Never set it speculatively.
+- Setting automation to always active through \`set_bot_status\` requires both explicit user
+  confirmation and \`confirm_always_on:true\`. Explain that this can automate replies beyond the
+  current conversation.
+- Creating and updating contacts must remain one-record operations, even when the user supplies a
+  list. Ask them to select one record for this public workflow.
+
+If the connection is read-only, explain the needed Read and act access instead of attempting a
+hidden write tool or asking for a credential in chat.
+`;
+}
+
+function codexManifest(brand) {
+  return {
+    name: brand.package.slug,
+    version: brand.package.version,
+    description: brand.package.description,
+    author: {
+      name: brand.publisher.name,
+      email: brand.publisher.email,
+      url: brand.publisher.url,
+    },
+    homepage: brand.legal.homepage,
+    repository: brand.publisher.repository,
+    license: brand.legal.license,
+    keywords: brand.package.keywords,
+    skills: "./skills/",
+    mcpServers: "./.mcp.json",
+    interface: {
+      displayName: brand.package.displayName,
+      shortDescription: brand.package.description,
+      longDescription: brand.package.longDescription,
+      developerName: brand.publisher.developerName,
+      category: brand.package.category,
+      capabilities: brand.package.capabilities,
+      websiteURL: brand.legal.website,
+      privacyPolicyURL: brand.legal.privacy,
+      termsOfServiceURL: brand.legal.terms,
+      defaultPrompt: brand.copy.starterPrompts,
+      brandColor: brand.branding.primaryColor.toUpperCase(),
+      composerIcon: "./assets/icon.png",
+      logo: "./assets/logo.png",
+      logoDark: "./assets/logo-dark.png",
+      screenshots: SCREENSHOTS.map(([fileName]) => `./assets/${fileName}`),
+    },
+  };
+}
+
+function claudeManifest(brand) {
+  return {
+    $schema: "https://json.schemastore.org/claude-code-plugin-manifest.json",
+    name: brand.package.slug,
+    displayName: brand.package.displayName,
+    version: brand.package.version,
+    description: brand.package.description,
+    author: {
+      name: brand.publisher.name,
+      email: brand.publisher.email,
+      url: brand.publisher.url,
+    },
+    homepage: brand.legal.homepage,
+    repository: brand.publisher.repository,
+    license: brand.legal.license,
+    keywords: brand.package.keywords,
+    skills: "./skills/",
+    mcpServers: "./.mcp.json",
+  };
+}
+
+function mcpManifest(brand) {
+  return {
+    mcpServers: {
+      [brand.mcp.serverName]: {
+        type: "http",
+        url: brand.mcp.resourceUrl,
+      },
+    },
+  };
+}
+
+function codexMarketplace(brand) {
+  return {
+    name: brand.marketplaces.codex.name,
+    interface: { displayName: brand.marketplaces.codex.displayName },
+    plugins: [
+      {
+        name: brand.package.slug,
+        source: { source: "local", path: `./plugins/${brand.package.slug}` },
+        policy: {
+          installation: brand.marketplaces.codex.installation,
+          authentication: brand.marketplaces.codex.authentication,
+        },
+        category: brand.package.category,
+      },
+    ],
+  };
+}
+
+function claudeMarketplace(brand) {
+  return {
+    name: brand.marketplaces.claude.name,
+    owner: {
+      name: brand.publisher.name,
+      email: brand.publisher.email,
+      url: brand.publisher.url,
+    },
+    description: brand.marketplaces.claude.description,
+    version: brand.package.version,
+    plugins: [
+      {
+        name: brand.package.slug,
+        displayName: brand.package.displayName,
+        source: `./plugins/${brand.package.slug}`,
+        description: brand.package.description,
+        version: brand.package.version,
+        author: {
+          name: brand.publisher.name,
+          email: brand.publisher.email,
+          url: brand.publisher.url,
+        },
+        homepage: brand.legal.homepage,
+        repository: brand.publisher.repository,
+        license: brand.legal.license,
+        keywords: brand.package.keywords,
+        category: brand.package.category.toLowerCase(),
+      },
+    ],
+  };
+}
+
+function packageReadme(brand) {
+  return `<!-- Generated by scripts/generate-brand-package.mjs. -->
+# ${brand.package.displayName}
+
+${brand.package.longDescription}
+
+## Connection
+
+This plugin connects to \`${brand.mcp.resourceUrl}\` using the host's remote HTTP MCP support.
+OAuth discovery is server-driven. Do not add an API key, access token, client secret, or static
+Authorization header to this package.
+
+## Included workflows
+
+- \`inbox-triage\` — read-only review and action list.
+- \`safe-draft-and-send\` — exact preview, explicit confirmation, one send, status check.
+- \`contact-device-compliance\` — one contact/device/compliance operation at a time.
+
+The connection is bound to one workspace per consent grant. Read-only grants discover only read
+tools; Read and act grants add the curated write tools. This plugin is not a bulk sender.
+`;
+}
+
+function submissionChecklist(brand) {
+  return `<!-- Generated by scripts/generate-brand-package.mjs. -->
+# ${brand.package.displayName} submission checklist
+
+- [ ] Package version is \`${brand.package.version}\` everywhere.
+- [ ] MCP resource is exactly \`${brand.mcp.resourceUrl}\`.
+- [ ] OAuth discovery, PKCE, workspace consent, scopes, refresh, and revocation pass served tests.
+- [ ] Read-only access discovers eight tools; Read and act discovers thirteen.
+- [ ] Send is marked consequential and provider approval remains enabled.
+- [ ] Support, privacy, and terms URLs are publicly reachable.
+- [ ] Screenshots match the current behavior and contain no customer data.
+- [ ] OpenAI's official plugin validator passes.
+- [ ] Claude's strict plugin and marketplace validators pass.
+- [ ] No credentials, customer identifiers, local machine paths, or generated agency archives exist.
+- [ ] A real OpenAI portal identifier has been added to \`.app.json\` only when issued.
+- [ ] Public submission has separate owner approval.
+`;
+}
+
+function checksumFile(files, pluginPrefix) {
+  return [...files.entries()]
+    .filter(([relativePath]) => relativePath.startsWith(`${pluginPrefix}/`))
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([relativePath, contents]) => {
+      const pluginRelative = relativePath.slice(pluginPrefix.length + 1);
+      return `${createHash("sha256").update(contents).digest("hex")}  ${pluginRelative}`;
+    })
+    .join("\n") + "\n";
+}
+
+export function renderBrandPackage(brand) {
+  const files = new Map();
+  const slug = brand.package.slug;
+  const pluginPrefix = `plugins/${slug}`;
+  const addText = (relativePath, contents) => files.set(relativePath, Buffer.from(contents, "utf8"));
+  const addJson = (relativePath, value) => addText(relativePath, json(value));
+
+  addJson(".agents/plugins/marketplace.json", codexMarketplace(brand));
+  addJson(".claude-plugin/marketplace.json", claudeMarketplace(brand));
+  addJson(`${pluginPrefix}/.codex-plugin/plugin.json`, codexManifest(brand));
+  addJson(`${pluginPrefix}/.claude-plugin/plugin.json`, claudeManifest(brand));
+  addJson(`${pluginPrefix}/.mcp.json`, mcpManifest(brand));
+  addText(`${pluginPrefix}/README.md`, packageReadme(brand));
+  addText(`${pluginPrefix}/SUBMISSION_CHECKLIST.md`, submissionChecklist(brand));
+  addText(`${pluginPrefix}/skills/inbox-triage/SKILL.md`, inboxTriageSkill(brand));
+  addText(`${pluginPrefix}/skills/safe-draft-and-send/SKILL.md`, safeDraftAndSendSkill(brand));
+  addText(`${pluginPrefix}/skills/contact-device-compliance/SKILL.md`, contactComplianceSkill(brand));
+  files.set(`${pluginPrefix}/assets/icon.png`, makeIcon(brand));
+  files.set(`${pluginPrefix}/assets/logo.png`, makeLogo(brand, false));
+  files.set(`${pluginPrefix}/assets/logo-dark.png`, makeLogo(brand, true));
+  SCREENSHOTS.forEach(([fileName, title, badge], index) => {
+    files.set(`${pluginPrefix}/assets/${fileName}`, makeScreenshot(brand, title, badge, index));
+  });
+  addText(`${pluginPrefix}/CHECKSUMS.sha256`, checksumFile(files, pluginPrefix));
+  return files;
+}
+
+async function assertOutputPath(outputRoot, relativePath) {
+  const target = path.resolve(outputRoot, relativePath);
+  const prefix = `${path.resolve(outputRoot)}${path.sep}`;
+  if (!target.startsWith(prefix)) throw new Error(`Generated path escapes output root: ${relativePath}`);
+  return target;
+}
+
+export async function writeBrandPackage({ brand, outputRoot, check = false }) {
+  const resolvedRoot = path.resolve(outputRoot);
+  const files = renderBrandPackage(brand);
+  const stale = [];
+  for (const [relativePath, contents] of files) {
+    const target = await assertOutputPath(resolvedRoot, relativePath);
+    if (check) {
+      try {
+        const current = await readFile(target);
+        if (!current.equals(contents)) stale.push(relativePath);
+      } catch {
+        stale.push(relativePath);
+      }
+      continue;
+    }
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, contents);
+  }
+  if (stale.length) {
+    throw new Error(`Generated package is stale or incomplete:\n${stale.map((entry) => `- ${entry}`).join("\n")}`);
+  }
+  return { files: [...files.keys()].sort(), outputRoot: resolvedRoot };
+}
+
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  const { brand } = await loadAndValidateBrand(options.brand);
+  const result = await writeBrandPackage({
+    brand,
+    outputRoot: options.output,
+    check: options.check,
+  });
+  const verb = options.check ? "Verified" : "Generated";
+  process.stdout.write(`${verb} ${brand.package.displayName}: ${result.files.length} files in ${result.outputRoot}\n`);
+}
+
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+  main().catch((error) => {
+    process.stderr.write(`${error.message}\n`);
+    process.exitCode = 1;
+  });
+}
