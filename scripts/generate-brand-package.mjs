@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { constants as zlibConstants, deflateSync } from "node:zlib";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-const GENERATOR_VERSION = 1;
+const GENERATOR_VERSION = 2;
 const SCREENSHOTS = [
   ["screenshot-inbox-triage.png", "INBOX TRIAGE", "READ ONLY"],
   ["screenshot-safe-send.png", "SAFE DRAFT AND SEND", "APPROVAL REQUIRED"],
@@ -268,6 +267,161 @@ function pngChunk(type, data) {
   return Buffer.concat([length, typeBuffer, data, checksum]);
 }
 
+const DEFLATE_LENGTHS = [
+  [3, 0], [4, 0], [5, 0], [6, 0], [7, 0], [8, 0], [9, 0], [10, 0],
+  [11, 1], [13, 1], [15, 1], [17, 1],
+  [19, 2], [23, 2], [27, 2], [31, 2],
+  [35, 3], [43, 3], [51, 3], [59, 3],
+  [67, 4], [83, 4], [99, 4], [115, 4],
+  [131, 5], [163, 5], [195, 5], [227, 5], [258, 0],
+];
+
+const DEFLATE_DISTANCES = [
+  [1, 0], [2, 0], [3, 0], [4, 0],
+  [5, 1], [7, 1], [9, 2], [13, 2],
+  [17, 3], [25, 3], [33, 4], [49, 4],
+  [65, 5], [97, 5], [129, 6], [193, 6],
+  [257, 7], [385, 7], [513, 8], [769, 8],
+  [1025, 9], [1537, 9], [2049, 10], [3073, 10],
+  [4097, 11], [6145, 11], [8193, 12], [12289, 12],
+  [16385, 13], [24577, 13],
+];
+
+function reverseBits(value, width) {
+  let reversed = 0;
+  for (let bit = 0; bit < width; bit += 1) {
+    reversed = (reversed << 1) | ((value >>> bit) & 1);
+  }
+  return reversed;
+}
+
+class DeflateBitWriter {
+  constructor() {
+    this.bytes = [];
+    this.pending = 0;
+    this.pendingBits = 0;
+  }
+
+  writeBits(value, width) {
+    this.pending |= value << this.pendingBits;
+    this.pendingBits += width;
+    while (this.pendingBits >= 8) {
+      this.bytes.push(this.pending & 0xff);
+      this.pending >>>= 8;
+      this.pendingBits -= 8;
+    }
+  }
+
+  finish() {
+    if (this.pendingBits > 0) this.bytes.push(this.pending & 0xff);
+    return Buffer.from(this.bytes);
+  }
+}
+
+function writeFixedSymbol(writer, symbol) {
+  if (symbol <= 143) {
+    writer.writeBits(reverseBits(0x30 + symbol, 8), 8);
+  } else if (symbol <= 255) {
+    writer.writeBits(reverseBits(0x190 + symbol - 144, 9), 9);
+  } else if (symbol <= 279) {
+    writer.writeBits(reverseBits(symbol - 256, 7), 7);
+  } else {
+    writer.writeBits(reverseBits(0xc0 + symbol - 280, 8), 8);
+  }
+}
+
+function findDeflateRange(ranges, value) {
+  for (let index = ranges.length - 1; index >= 0; index -= 1) {
+    if (value >= ranges[index][0]) return index;
+  }
+  throw new Error(`Unsupported DEFLATE value: ${value}`);
+}
+
+function writeLengthDistance(writer, length, distance) {
+  const lengthIndex = findDeflateRange(DEFLATE_LENGTHS, length);
+  const [lengthBase, lengthExtraBits] = DEFLATE_LENGTHS[lengthIndex];
+  writeFixedSymbol(writer, 257 + lengthIndex);
+  if (lengthExtraBits) writer.writeBits(length - lengthBase, lengthExtraBits);
+
+  const distanceIndex = findDeflateRange(DEFLATE_DISTANCES, distance);
+  const [distanceBase, distanceExtraBits] = DEFLATE_DISTANCES[distanceIndex];
+  writer.writeBits(reverseBits(distanceIndex, 5), 5);
+  if (distanceExtraBits) writer.writeBits(distance - distanceBase, distanceExtraBits);
+}
+
+function deflateHash(input, position) {
+  return ((input[position] * 251 + input[position + 1]) * 251 + input[position + 2]) & 0xffff;
+}
+
+function fixedDeflate(input) {
+  const writer = new DeflateBitWriter();
+  const latest = new Int32Array(65536);
+  latest.fill(-1);
+
+  // One final block using the RFC 1951 fixed Huffman tables. Implementing this small,
+  // deterministic encoder avoids zlib-version-dependent PNG bytes and checksums.
+  writer.writeBits(1, 1);
+  writer.writeBits(1, 2);
+
+  let position = 0;
+  while (position < input.length) {
+    let consumed = 1;
+    if (position + 2 < input.length) {
+      const hash = deflateHash(input, position);
+      const candidate = latest[hash];
+      const distance = position - candidate;
+      let matchLength = 0;
+      if (candidate >= 0 && distance <= 32768) {
+        const maximum = Math.min(258, input.length - position);
+        while (
+          matchLength < maximum
+          && input[candidate + matchLength] === input[position + matchLength]
+        ) {
+          matchLength += 1;
+        }
+      }
+      if (matchLength >= 3) {
+        writeLengthDistance(writer, matchLength, distance);
+        consumed = matchLength;
+      } else {
+        writeFixedSymbol(writer, input[position]);
+      }
+    } else {
+      writeFixedSymbol(writer, input[position]);
+    }
+
+    const end = Math.min(position + consumed, input.length - 2);
+    for (let index = position; index < end; index += 1) {
+      latest[deflateHash(input, index)] = index;
+    }
+    position += consumed;
+  }
+  writeFixedSymbol(writer, 256);
+  return writer.finish();
+}
+
+function adler32(buffer) {
+  const modulus = 65521;
+  let first = 1;
+  let second = 0;
+  for (let offset = 0; offset < buffer.length; offset += 5552) {
+    const end = Math.min(offset + 5552, buffer.length);
+    for (let index = offset; index < end; index += 1) {
+      first += buffer[index];
+      second += first;
+    }
+    first %= modulus;
+    second %= modulus;
+  }
+  return ((second << 16) | first) >>> 0;
+}
+
+function deterministicZlib(input) {
+  const trailer = Buffer.alloc(4);
+  trailer.writeUInt32BE(adler32(input));
+  return Buffer.concat([Buffer.from([0x78, 0x01]), fixedDeflate(input), trailer]);
+}
+
 function encodePng(raster) {
   const header = Buffer.alloc(13);
   header.writeUInt32BE(raster.width, 0);
@@ -279,10 +433,7 @@ function encodePng(raster) {
     rows.push(Buffer.from([0]));
     rows.push(Buffer.from(raster.data.buffer, row * raster.width * 4, raster.width * 4));
   }
-  const compressed = deflateSync(Buffer.concat(rows), {
-    level: 9,
-    strategy: zlibConstants.Z_FIXED,
-  });
+  const compressed = deterministicZlib(Buffer.concat(rows));
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     pngChunk("IHDR", header),
