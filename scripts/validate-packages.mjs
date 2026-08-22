@@ -252,7 +252,7 @@ function validateProviderSyntax(contents, label, errors) {
     errors.push(`${label}: named HTML entities are not allowed`);
   }
   if (candidates.some((candidate) =>
-    /!?\[[^\]]*\]\s*(?:\(|\[)|^(?:(?:[ \t]*>[ \t]*)|(?:[ \t]*(?:[-+*]|\d{1,9}[.)])[ \t]+))*[ \t]*\[[^\]]+\]:[ \t]*\S+/m.test(candidate)
+    /!?\[[^\]]*\]\s*(?:\(|\[)|^(?:(?:[ \t]*>[ \t]*)|(?:[ \t]*(?:[-+*]|\d{1,9}[.)])[ \t]+))*[ \t]*\[[^\]]+\]:/m.test(candidate)
   )) {
     errors.push(`${label}: Markdown links are not allowed`);
   }
