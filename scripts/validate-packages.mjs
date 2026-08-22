@@ -251,7 +251,9 @@ function validateProviderSyntax(contents, label, errors) {
   if (candidates.some((candidate) => /&[a-z][a-z0-9]+;/i.test(candidate))) {
     errors.push(`${label}: named HTML entities are not allowed`);
   }
-  if (candidates.some((candidate) => /!?\[[^\]]*\]\s*(?:\(|\[)/.test(candidate))) {
+  if (candidates.some((candidate) =>
+    /!?\[[^\]]*\]\s*(?:\(|\[)|^\s*\[[^\]]+\]:\s*\S+/m.test(candidate)
+  )) {
     errors.push(`${label}: Markdown links are not allowed`);
   }
   if (candidates.some((candidate) => /<\/?[a-z][a-z0-9-]*(?:\s|\/?>)/i.test(candidate))) {
