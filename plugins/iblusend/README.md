@@ -13,7 +13,7 @@ Authorization header to this package.
 
 - `inbox-triage` — read-only review and action list.
 - `safe-draft-and-send` — exact preview, explicit confirmation, one send, status check.
-- `contact-device-compliance` — one contact/device/compliance operation at a time.
+- `contact-device-compliance` — inspect one contact/device or confirm one opt-out/bot change.
 
 The connection is bound to one workspace per consent grant. Read-only grants discover only read
 tools; Read and act grants add the curated write tools. Public OAuth sends are 1:1 only; group

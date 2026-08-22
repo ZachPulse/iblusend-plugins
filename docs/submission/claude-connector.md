@@ -16,8 +16,8 @@ Official references:
 - Token refresh/expiry, revocation, exact redirect URI, exact resource, and one-workspace consent are
   proven with synthetic accounts.
 - Every tool has a human-readable title and accurate `readOnlyHint` or `destructiveHint`.
-- Write annotations match actual effects, especially `send_message`, opt-out, contact writes, and
-  bot-state changes.
+- Write annotations match actual effects, especially `send_message`, opt-out, and bot-state
+  changes. Contact creation and profile-field updates remain held back from public OAuth.
 - HTTPS Origin handling, timeouts, result sizes, error shapes, privacy policy, docs, support, and a
   reviewer account are ready.
 - The reviewer account is restricted to a synthetic workspace with owned data.

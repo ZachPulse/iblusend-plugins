@@ -5,7 +5,7 @@
     "slug": "iblusend",
     "displayName": "iBluSend",
     "version": "0.1.2",
-    "description": "Safely triage conversations, manage contacts, and send confirmed iMessages and SMS through one consented workspace.",
+    "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
     "longDescription": "Connect one iBluSend workspace to inspect conversations, contacts, devices, groups, delivery status, opt-out state, and bot status. Draft and send only after showing the exact destination and content for approval.",
     "category": "Productivity",
     "capabilities": ["Interactive", "Read", "Write"],

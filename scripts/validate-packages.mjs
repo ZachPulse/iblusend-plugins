@@ -13,11 +13,13 @@ const REQUIRED_SKILLS = [
   "safe-draft-and-send",
 ];
 const HELD_BACK_TOOLS = [
+  "create_contact",
   "mark_read",
   "remove_reaction",
   "send_reaction",
   "send_typing_indicator",
   "send_voice_memo",
+  "update_contact",
 ];
 const OPENAI_KEYS = new Set([
   "author",

@@ -1,6 +1,6 @@
 ---
 name: contact-device-compliance
-description: "Inspect or change one iBluSend contact, device, opt-out state, or bot setting with explicit confirmation."
+description: "Inspect one iBluSend contact or device, or change one opt-out state or bot setting with explicit confirmation."
 ---
 
 # Contact, device, and compliance operations
@@ -12,8 +12,8 @@ workspace.
 
 - Work on exactly one workspace and one contact or one automation setting per change.
 - Start read-only. Resolve the target and show current state before proposing a mutation.
-- Never create a bulk contact importer, export customer data, change several contacts in a loop, or
-  use contact writes to evade opt-out and pacing controls.
+- Contact creation and profile-field updates are not available in this public workflow. Never
+  invent a hidden write path, bulk importer, or customer-data export.
 - Never treat a phone number as belonging to a person unless the connected workspace data supports
   that association.
 - Device state is a reported snapshot. Offline/online does not guarantee that a future message will
@@ -22,8 +22,6 @@ workspace.
 ## Tool selection
 
 - `list_contacts` finds an existing record.
-- `create_contact` creates or upserts one record per call.
-- `update_contact` changes one existing record per call.
 - `list_devices` reports lines and current capacity/state for the consented workspace.
 - `get_opt_out_status` reads one contact's messaging consent state.
 - `opt_out` applies one opt-out or explicitly confirmed re-subscribe action.
@@ -53,8 +51,6 @@ workspace.
 - Setting automation to always active through `set_bot_status` requires both explicit user
   confirmation and `confirm_always_on:true`. Explain that this can automate replies beyond the
   current conversation.
-- Creating and updating contacts must remain one-record operations, even when the user supplies a
-  list. Ask them to select one record for this public workflow.
 
 If the connection is read-only, explain the needed Read and act access instead of attempting a
 hidden write tool or asking for a credential in chat.

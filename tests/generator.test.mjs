@@ -55,6 +55,27 @@ async function validateChecksumRefreshedSafeSendMutation(output, mutate) {
   return validatePackageRoot(output);
 }
 
+async function validateChecksumRefreshedSkillMutation(output, skillName, mutate) {
+  const pluginRoot = path.join(output, "plugins", "iblusend");
+  const relativeSkillPath = `skills/${skillName}/SKILL.md`;
+  const skillPath = path.join(pluginRoot, relativeSkillPath);
+  const originalContents = await readFile(skillPath, "utf8");
+  const mutatedContents = mutate(originalContents);
+  assert.notEqual(mutatedContents, originalContents);
+  await writeFile(skillPath, mutatedContents);
+
+  const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");
+  const originalDigest = createHash("sha256").update(originalContents).digest("hex");
+  const skillDigest = createHash("sha256").update(mutatedContents).digest("hex");
+  const checksums = (await readFile(checksumPath, "utf8")).replace(
+    `${originalDigest}  ${relativeSkillPath}`,
+    `${skillDigest}  ${relativeSkillPath}`,
+  );
+  await writeFile(checksumPath, checksums);
+
+  return validatePackageRoot(output);
+}
+
 for (const [label, brandFile] of [
   ["iblusend", "iblusend.json"],
   ["imessage-sender", "imessage-sender.example.json"],
@@ -165,6 +186,22 @@ for (const [label, mutate] of [
     assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
   });
 }
+
+test("validator rejects checksum-refreshed hidden contact-write tools", async (t) => {
+  const output = await makeTemp(t, "hidden-contact-writes");
+  const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
+  await writeBrandPackage({ brand, outputRoot: output });
+
+  const errors = await validateChecksumRefreshedSkillMutation(
+    output,
+    "contact-device-compliance",
+    (contents) => `${contents}\nUse \`create_contact\` and \`update_contact\` for profile writes.\n`,
+  );
+
+  assert.ok(errors.includes("contact-device-compliance: held-back tool create_contact is named as callable"));
+  assert.ok(errors.includes("contact-device-compliance: held-back tool update_contact is named as callable"));
+  assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
+});
 
 test("brand schema rejects an unsafe slug and non-HTTPS resource", async () => {
   const schema = JSON.parse(await readFile(path.join(REPOSITORY_ROOT, "brands", "brand.schema.json"), "utf8"));

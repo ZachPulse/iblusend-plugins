@@ -74,6 +74,12 @@ test("checked-in provider copy preserves group reads and the 8/11 contract", asy
   );
   assert.match(inboxSkill, /read one phone or one existing group at a time/);
 
+  const contactSkill = await readFile(
+    path.join(PLUGIN, "skills", "contact-device-compliance", "SKILL.md"),
+    "utf8",
+  );
+  assert.doesNotMatch(contactSkill, /`(?:create_contact|update_contact)`/);
+
   const checklist = await readFile(path.join(PLUGIN, "SUBMISSION_CHECKLIST.md"), "utf8");
   assert.match(checklist, /Read-only access discovers eight tools; Read and act discovers eleven/);
   assert.doesNotMatch(checklist, /thirteen/i);
@@ -85,4 +91,13 @@ test("checked-in provider copy preserves group reads and the 8/11 contract", asy
   const localBeta = await readFile(path.join(ROOT, "docs", "local-beta.md"), "utf8");
   assert.match(localBeta, /OAuth Read and act: exactly eleven tools/);
   assert.match(localBeta, /API-key Read and act: exactly thirteen tools/);
+
+  const claudeSubmission = await readFile(
+    path.join(ROOT, "docs", "submission", "claude-connector.md"),
+    "utf8",
+  );
+  assert.doesNotMatch(claudeSubmission, /contact writes/i);
+
+  const claudeMarketplace = await loadJson(".claude-plugin/marketplace.json");
+  assert.doesNotMatch(claudeMarketplace.plugins[0].description, /manage contacts/i);
 });
