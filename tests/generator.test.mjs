@@ -196,9 +196,15 @@ for (const [label, unsafeGuidance] of [
     "Call mcp__iblusend__create_contact and iblusend_update_contact for profile writes.",
   ],
   ["Markdown-escaped identifiers", "Call create\\_contact and update\\_contact for profile writes."],
+  ["JSON/YAML Unicode escapes", "Call create\\u005fcontact and update\\u005fcontact."],
+  ["YAML hexadecimal escapes", "Call create\\x5fcontact and update\\x5fcontact."],
+  ["Markdown decimal entities", "Call create&#95;contact and update&#95;contact."],
+  ["Markdown hexadecimal entities", "Call create&#x5f;contact and update&#x5f;contact."],
+  ["URL-encoded identifiers", "Call create%5Fcontact and update%5Fcontact."],
+  ["Unicode compatibility underscores", "Call create＿contact and update＿contact."],
 ]) {
   test(`validator rejects checksum-refreshed hidden contact-write tools in ${label}`, async (t) => {
-    const output = await makeTemp(t, `hidden-contact-writes-${label.replaceAll(" ", "-")}`);
+    const output = await makeTemp(t, `hidden-contact-writes-${label.replace(/[^a-z0-9-]+/gi, "-")}`);
     const { brand } = await loadAndValidateBrand(
       path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
     );
@@ -414,6 +420,43 @@ for (const catalogPath of [
     ));
   });
 }
+
+test("validator rejects JSON-decoded hidden tools in a checksummed manifest", async (t) => {
+  const output = await makeTemp(t, "json-decoded-hidden-tools");
+  const { brand } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+  );
+  await writeBrandPackage({ brand, outputRoot: output });
+
+  const pluginRoot = path.join(output, "plugins", "iblusend");
+  const relativeManifestPath = ".codex-plugin/plugin.json";
+  const manifestPath = path.join(pluginRoot, relativeManifestPath);
+  const originalManifest = await readFile(manifestPath, "utf8");
+  const manifest = JSON.parse(originalManifest);
+  manifest.interface.defaultPrompt[0] = "Call create_contact and update_contact.";
+  const mutatedManifest = `${JSON.stringify(manifest, null, 2)}\n`
+    .replaceAll("create_contact", "create\\u005fcontact")
+    .replaceAll("update_contact", "update\\u005fcontact");
+  await writeFile(manifestPath, mutatedManifest);
+
+  const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");
+  const originalDigest = createHash("sha256").update(originalManifest).digest("hex");
+  const mutatedDigest = createHash("sha256").update(mutatedManifest).digest("hex");
+  const checksums = (await readFile(checksumPath, "utf8")).replace(
+    `${originalDigest}  ${relativeManifestPath}`,
+    `${mutatedDigest}  ${relativeManifestPath}`,
+  );
+  await writeFile(checksumPath, checksums);
+
+  const errors = await validatePackageRoot(output);
+  assert.ok(errors.includes(
+    `${relativeManifestPath}: held-back tool create_contact is named as callable`,
+  ));
+  assert.ok(errors.includes(
+    `${relativeManifestPath}: held-back tool update_contact is named as callable`,
+  ));
+  assert.equal(errors.some((error) => error.includes("checksum")), false);
+});
 
 test("brand schema rejects an unsafe slug and non-HTTPS resource", async () => {
   const schema = JSON.parse(await readFile(path.join(REPOSITORY_ROOT, "brands", "brand.schema.json"), "utf8"));

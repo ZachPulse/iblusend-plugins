@@ -183,8 +183,19 @@ export async function collectFiles(root, { skipDevelopmentDirectories = true } =
   return result.sort();
 }
 
+function normalizeProviderText(contents) {
+  return contents
+    .normalize("NFKC")
+    .replace(/\\(?:u\{0*5f\}|u0{2,6}5f|x5f)/gi, "_")
+    .replace(/&#(?:0*95|x0*5f);/gi, "_")
+    .replace(/&(?:lowbar|underbar);/gi, "_")
+    .replace(/%5f/gi, "_")
+    .replaceAll("\\_", "_")
+    .toLowerCase();
+}
+
 function validateHeldBackToolText(contents, label, errors) {
-  const normalizedContents = contents.replaceAll("\\_", "_").toLowerCase();
+  const normalizedContents = normalizeProviderText(contents);
   for (const heldBack of HELD_BACK_TOOLS) {
     if (normalizedContents.includes(heldBack)) {
       errors.push(`${label}: held-back tool ${heldBack} is named as callable`);
