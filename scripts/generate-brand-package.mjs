@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -719,6 +719,7 @@ function codexManifest(brand) {
     keywords: brand.package.keywords,
     skills: "./skills/",
     mcpServers: "./.mcp.json",
+    ...(brand.openai ? { apps: "./.app.json" } : {}),
     interface: {
       displayName: brand.package.displayName,
       shortDescription: brand.package.description,
@@ -735,6 +736,17 @@ function codexManifest(brand) {
       logo: "./assets/logo.png",
       logoDark: "./assets/logo-dark.png",
       screenshots: SCREENSHOTS.map(([fileName]) => `./assets/${fileName}`),
+    },
+  };
+}
+
+function openAiAppManifest(brand) {
+  if (!brand.openai) return null;
+  return {
+    apps: {
+      [brand.package.slug]: {
+        id: brand.openai.appId,
+      },
     },
   };
 }
@@ -858,7 +870,9 @@ function submissionChecklist(brand) {
 - [ ] OpenAI's official plugin validator passes.
 - [ ] Claude's strict plugin and marketplace validators pass.
 - [ ] No credentials, customer identifiers, local machine paths, or generated agency archives exist.
-- [ ] A real OpenAI portal identifier has been added to \`.app.json\` only when issued.
+${brand.openai
+    ? "- [ ] `.app.json` maps this package to the issued OpenAI app and the OpenAI manifest references it."
+    : "- [ ] `.app.json` remains absent until this brand receives its own OpenAI portal identifier."}
 - [ ] Public submission has separate owner approval.
 `;
 }
@@ -886,6 +900,8 @@ export function renderBrandPackage(brand) {
   addJson(`${pluginPrefix}/.codex-plugin/plugin.json`, codexManifest(brand));
   addJson(`${pluginPrefix}/.claude-plugin/plugin.json`, claudeManifest(brand));
   addJson(`${pluginPrefix}/.mcp.json`, mcpManifest(brand));
+  const openAiApp = openAiAppManifest(brand);
+  if (openAiApp) addJson(`${pluginPrefix}/.app.json`, openAiApp);
   addText(`${pluginPrefix}/README.md`, packageReadme(brand));
   addText(`${pluginPrefix}/SUBMISSION_CHECKLIST.md`, submissionChecklist(brand));
   addText(`${pluginPrefix}/skills/inbox-triage/SKILL.md`, inboxTriageSkill(brand));
@@ -908,9 +924,51 @@ async function assertOutputPath(outputRoot, relativePath) {
   return target;
 }
 
+async function findExistingAppManifests(outputRoot) {
+  const pluginsRoot = await assertOutputPath(outputRoot, "plugins");
+  const manifests = [];
+
+  async function walk(directory) {
+    let entries;
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if (error?.code === "ENOENT") return;
+      throw error;
+    }
+    for (const entry of entries) {
+      const target = path.join(directory, entry.name);
+      if (entry.name === ".app.json") {
+        manifests.push({
+          isRegularFile: entry.isFile(),
+          relativePath: path.relative(outputRoot, target).split(path.sep).join("/"),
+        });
+      } else if (entry.isDirectory()) {
+        await walk(target);
+      }
+    }
+  }
+
+  await walk(pluginsRoot);
+  return manifests.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+}
+
 export async function writeBrandPackage({ brand, outputRoot, check = false }) {
   const resolvedRoot = path.resolve(outputRoot);
   const files = renderBrandPackage(brand);
+  const expectedAppManifests = new Set(
+    [...files.keys()].filter((relativePath) => relativePath.startsWith("plugins/") && relativePath.endsWith("/.app.json")),
+  );
+  const unexpectedAppManifests = (await findExistingAppManifests(resolvedRoot))
+    .filter(({ isRegularFile, relativePath }) => !isRegularFile || !expectedAppManifests.has(relativePath))
+    .map(({ relativePath }) => relativePath);
+  if (unexpectedAppManifests.length) {
+    throw new Error(
+      `Refusing to retain stale or unexpected OpenAI app mapping:\n${unexpectedAppManifests
+        .map((relativePath) => `- ${relativePath}`)
+        .join("\n")}`,
+    );
+  }
   const stale = [];
   for (const [relativePath, contents] of files) {
     const target = await assertOutputPath(resolvedRoot, relativePath);

@@ -27,7 +27,8 @@ claude plugin validate plugins/iblusend --strict
 claude plugin validate . --strict
 ```
 
-Expected: every command exits zero, the generated package is current, and `.app.json` is absent.
+Expected: every command exits zero, the generated package is current, and iBluSend's `.app.json`
+contains only the issued canonical OpenAI app identifier.
 
 ## 2. Direct sandbox MCP contract
 
@@ -73,9 +74,9 @@ Verify:
 - the MCP connection asks for authentication rather than exposing a credential; and
 - a draft-only prompt stops before `send_message`.
 
-ChatGPT developer-mode end-to-end OAuth needs a registered MCP connection and its real
-`plugin_asdk_app...` compatibility identifier. Until that registration exists, keep `.app.json`
-absent and record the connector step as provider-registration blocked, not as a package failure.
+ChatGPT developer-mode end-to-end OAuth uses the registered iBluSend MCP connection referenced by
+`.app.json`. Confirm a fresh install opens the iBluSend consent flow, binds exactly one workspace,
+and exposes only eight tools after choosing Read only.
 
 ## 4. Claude plugin loading
 
@@ -124,4 +125,5 @@ authorization callback query, workspace identifier, phone number, contact name, 
 - Tool counts and held-back argument failures match the public-v1 contract.
 - Both hosts load the same three skills and same MCP resource.
 - No write or real-world send occurs.
-- Provider-registration and production-OAuth gaps are recorded explicitly for Gate B.
+- The registered iBluSend app binding and read-only production OAuth proof are recorded; write/send
+  E2E remains blocked until a server-side owned-recipient allowlist exists.

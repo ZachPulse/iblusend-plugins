@@ -86,6 +86,17 @@
         "resourceUrl": { "$ref": "#/$defs/httpsUrl" }
       }
     },
+    "openai": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["appId"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^asdk_app_[0-9a-f]{32}$"
+        }
+      }
+    },
     "branding": {
       "type": "object",
       "additionalProperties": false,

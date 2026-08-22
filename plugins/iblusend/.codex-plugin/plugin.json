@@ -1,6 +1,6 @@
 {
   "name": "iblusend",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Safely triage conversations, manage contacts, and send confirmed iMessages and SMS through one consented workspace.",
   "author": {
     "name": "iBluSend",
@@ -20,6 +20,7 @@
   ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
+  "apps": "./.app.json",
   "interface": {
     "displayName": "iBluSend",
     "shortDescription": "Safely triage conversations, manage contacts, and send confirmed iMessages and SMS through one consented workspace.",

@@ -24,16 +24,16 @@ Official references:
 
 ## Real portal connection identifier
 
-In ChatGPT developer mode, register the MCP resource from scratch and copy the technical identifier
-whose value begins with `plugin_asdk_app`. Only then:
+The iBluSend MCP resource is registered in ChatGPT developer mode and its issued technical
+identifier has been verified through a live read-only OAuth connection. The package now:
 
-1. add `plugins/iblusend/.app.json` with that exact identifier;
-2. add `"apps": "./.app.json"` to the OpenAI manifest;
-3. rerun the official validator and all repository tests; and
-4. test a fresh local install and workspace-published private copy.
+1. maps the portal connection to the canonical `asdk_app_...` runtime identifier in
+   `plugins/iblusend/.app.json`;
+2. points the OpenAI manifest's `apps` field at `./.app.json`;
+3. keeps the mapping minimal and app-ID-only, matching OpenAI's generated developer package; and
+4. leaves white-label packages app-ID-free unless that brand receives its own registration.
 
-Never commit a made-up or copied identifier. The package intentionally omits `.app.json` during
-Gate A.
+Never reuse this registration in a white-label bundle or replace it with a made-up identifier.
 
 ## Submission evidence
 

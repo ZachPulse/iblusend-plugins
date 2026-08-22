@@ -35,9 +35,17 @@ test("repository contains no likely secret, customer identifier, or private mach
   assert.deepEqual(findings, []);
 });
 
-test("repository contains no .app.json before a real portal ID exists", async () => {
+test("repository contains only the issued canonical OpenAI app mapping", async () => {
   const appManifests = (await collectFiles(ROOT))
     .map((absolute) => path.relative(ROOT, absolute).split(path.sep).join("/"))
     .filter((relative) => relative.endsWith("/.app.json") || relative === ".app.json");
-  assert.deepEqual(appManifests, []);
+  assert.deepEqual(appManifests, ["plugins/iblusend/.app.json"]);
+  const app = JSON.parse(await readFile(path.join(ROOT, appManifests[0]), "utf8"));
+  assert.deepEqual(app, {
+    apps: {
+      iblusend: {
+        id: "asdk_app_6a8904c0880c8191bbd17d77013abc1f",
+      },
+    },
+  });
 });

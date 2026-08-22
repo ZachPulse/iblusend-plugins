@@ -24,6 +24,7 @@ const OPENAI_KEYS = new Set([
   "keywords",
   "license",
   "mcpServers",
+  "apps",
   "name",
   "repository",
   "skills",
@@ -60,6 +61,9 @@ const CLAUDE_KEYS = new Set([
   "repository",
   "skills",
   "version",
+]);
+const ISSUED_OPENAI_APP_IDS = new Map([
+  ["iblusend", "asdk_app_6a8904c0880c8191bbd17d77013abc1f"],
 ]);
 
 function parseArgs(argv) {
@@ -338,7 +342,39 @@ export async function validatePackageRoot(root) {
   }
 
   const appJson = path.join(pluginRoot, ".app.json");
-  if (await fileExists(appJson)) errors.push(".app.json must remain absent until OpenAI issues a real portal ID");
+  if (await fileExists(appJson)) {
+    const app = await readJson(appJson, errors, "OpenAI app manifest");
+    rejectUnknown(app, new Set(["apps"]), errors, "OpenAI app manifest");
+    if (codex.apps !== "./.app.json") {
+      errors.push("OpenAI plugin manifest must reference ./.app.json when an app mapping exists");
+    }
+    const appEntries = app?.apps;
+    if (!appEntries || typeof appEntries !== "object" || Array.isArray(appEntries)) {
+      errors.push("OpenAI app manifest.apps must be an object");
+    } else if (Object.keys(appEntries).length !== 1 || !Object.hasOwn(appEntries, slug)) {
+      errors.push("OpenAI app manifest must contain exactly the package slug mapping");
+    } else {
+      const mapping = appEntries[slug];
+      if (!mapping || typeof mapping !== "object" || Array.isArray(mapping)) {
+        errors.push("OpenAI app mapping must be an object");
+      } else {
+        if (!/^asdk_app_[0-9a-f]{32}$/.test(mapping.id ?? "")) {
+          errors.push("OpenAI app mapping id must be a canonical asdk_app identifier");
+        }
+        const issuedAppId = ISSUED_OPENAI_APP_IDS.get(slug);
+        if (issuedAppId && mapping.id !== issuedAppId) {
+          errors.push(`OpenAI app mapping id for ${slug} must equal its issued identifier`);
+        }
+        for (const key of Object.keys(mapping)) {
+          if (key !== "id") {
+            errors.push(`OpenAI app mapping.${key} is not an accepted field`);
+          }
+        }
+      }
+    }
+  } else if (codex.apps !== undefined) {
+    errors.push("OpenAI plugin manifest must not reference .app.json when no app mapping exists");
+  }
   for (const skillName of REQUIRED_SKILLS) await validateSkill(pluginRoot, skillName, errors);
 
   const assetRequirements = [

@@ -12,15 +12,17 @@ engine, does not bypass iBluSend compliance controls, and does not ship credenti
 
 ## Repository status
 
-This repository is a Gate A local beta. The package has **not** been submitted to a public
-marketplace, and no production OAuth deployment is implied by this source tree. `.app.json` is
-deliberately absent until OpenAI supplies a real portal compatibility identifier.
+This package remains a development/local beta and has **not** been submitted to a public
+marketplace. The iBluSend package now carries the real OpenAI app mapping proven in the private
+ChatGPT developer-mode beta; white-label output omits `.app.json` unless that brand has its own
+registered OpenAI app.
 
 ## Layout
 
 ```text
 plugins/iblusend/                     Generated installable plugin
   .codex-plugin/plugin.json           OpenAI / Codex manifest
+  .app.json                           Registered iBluSend OpenAI app mapping
   .claude-plugin/plugin.json          Claude manifest
   .mcp.json                           Shared remote MCP connection
   skills/                             Provider-neutral workflows

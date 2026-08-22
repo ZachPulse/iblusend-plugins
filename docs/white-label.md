@@ -17,6 +17,10 @@ Start from `brands/imessage-sender.example.json` and validate fields against
 - starter prompts and workspace/channel wording; and
 - both marketplace identities and install policy.
 
+An optional `openai.appId` may be supplied only after that exact brand receives its own ChatGPT
+developer-mode registration. Store the canonical `asdk_app_...` runtime identifier, not the
+`plugin_asdk_app_...` wrapper shown in the ChatGPT URL. Omit the field for unregistered brands.
+
 All values must be final and authorized. Do not put a customer name, private repository URL,
 credential, tenant identifier, phone number, or private legal document into the public repository.
 
@@ -57,6 +61,8 @@ branded URL merely to make a manifest look finished.
 - Do not commit `dist/`, customer brand documents, reviewer credentials, or archives.
 - Bump the package version for every distributed update and regenerate checksums.
 - Keep `.app.json` absent unless that brand has its own real OpenAI portal connection identifier.
+- Generate unregistered brands into a fresh output directory. The generator fails closed rather
+  than retaining a stale `.app.json` from a previously registered build of the same slug.
 
 The iMessage Sender document is a reference implementation and private test target. It is not an
 authorization to publish another public marketplace listing.

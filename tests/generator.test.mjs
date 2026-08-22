@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -66,9 +66,79 @@ test("brand schema rejects an unsafe slug and non-HTTPS resource", async () => {
   const brand = JSON.parse(await readFile(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"), "utf8"));
   brand.package.slug = "../escape";
   brand.mcp.resourceUrl = "http://localhost/mcp";
+  brand.openai.appId = "plugin_asdk_app_6a8904c0880c8191bbd17d77013abc1f";
   const errors = validateAgainstSchema(brand, schema);
   assert.ok(errors.some((error) => error.includes("package.slug")));
   assert.ok(errors.some((error) => error.includes("mcp.resourceUrl")));
+  assert.ok(errors.some((error) => error.includes("openai.appId")));
+});
+
+test("app-less brand refuses a stale app mapping in reused output", async (t) => {
+  const output = await makeTemp(t, "stale-app");
+  const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
+  await writeBrandPackage({ brand, outputRoot: output });
+  const appLessBrand = structuredClone(brand);
+  delete appLessBrand.openai;
+  await assert.rejects(
+    writeBrandPackage({ brand: appLessBrand, outputRoot: output }),
+    /Refusing to retain stale or unexpected OpenAI app mapping/,
+  );
+});
+
+test("cross-brand reused output refuses another brand's stale app mapping", async (t) => {
+  const output = await makeTemp(t, "stale-cross-brand-app");
+  const { brand: registeredBrand } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+  );
+  const { brand: appLessBrand } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "imessage-sender.example.json"),
+  );
+  await writeBrandPackage({ brand: registeredBrand, outputRoot: output });
+  await assert.rejects(
+    writeBrandPackage({ brand: appLessBrand, outputRoot: output }),
+    /Refusing to retain stale or unexpected OpenAI app mapping/,
+  );
+});
+
+test("generator refuses a symlinked OpenAI app mapping", async (t) => {
+  const output = await makeTemp(t, "symlinked-app");
+  const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
+  await writeBrandPackage({ brand, outputRoot: output });
+
+  const appPath = path.join(output, "plugins", "iblusend", ".app.json");
+  await rm(appPath);
+  await symlink(".mcp.json", appPath);
+  await assert.rejects(
+    writeBrandPackage({ brand, outputRoot: output }),
+    /Refusing to retain stale or unexpected OpenAI app mapping/,
+  );
+});
+
+test("validator pins the issued iBluSend app id and rejects unknown app fields", async (t) => {
+  const output = await makeTemp(t, "invalid-issued-app");
+  const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
+  await writeBrandPackage({ brand, outputRoot: output });
+
+  const pluginRoot = path.join(output, "plugins", "iblusend");
+  const appPath = path.join(pluginRoot, ".app.json");
+  const app = JSON.parse(await readFile(appPath, "utf8"));
+  app.apps.iblusend.id = "asdk_app_00000000000000000000000000000000";
+  app.unexpected = true;
+  const appContents = `${JSON.stringify(app, null, 2)}\n`;
+  await writeFile(appPath, appContents);
+
+  const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");
+  const appDigest = createHash("sha256").update(appContents).digest("hex");
+  const checksums = (await readFile(checksumPath, "utf8")).replace(
+    /^[a-f0-9]{64}  \.app\.json$/m,
+    `${appDigest}  .app.json`,
+  );
+  await writeFile(checksumPath, checksums);
+
+  const errors = await validatePackageRoot(output);
+  assert.ok(errors.includes("OpenAI app manifest.unexpected is not an accepted field"));
+  assert.ok(errors.includes("OpenAI app mapping id for iblusend must equal its issued identifier"));
+  assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
 });
 
 test("iMessage Sender output has no unintended iBluSend branding", async (t) => {
@@ -77,6 +147,14 @@ test("iMessage Sender output has no unintended iBluSend branding", async (t) => 
     path.join(REPOSITORY_ROOT, "brands", "imessage-sender.example.json"),
   );
   await writeBrandPackage({ brand, outputRoot: output });
+  await assert.rejects(
+    readFile(path.join(output, "plugins", "imessage-sender", ".app.json")),
+    /ENOENT/,
+  );
+  const codexManifest = JSON.parse(
+    await readFile(path.join(output, "plugins", "imessage-sender", ".codex-plugin", "plugin.json"), "utf8"),
+  );
+  assert.equal(codexManifest.apps, undefined);
   const textFiles = (await collectFiles(output)).filter((filePath) => !filePath.endsWith(".png"));
   let text = "";
   for (const filePath of textFiles) text += await readFile(filePath, "utf8");

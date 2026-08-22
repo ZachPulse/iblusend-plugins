@@ -15,6 +15,7 @@ test("OpenAI and Claude manifests share identity, skills, and MCP resource", asy
   const codex = await loadJson("plugins/iblusend/.codex-plugin/plugin.json");
   const claude = await loadJson("plugins/iblusend/.claude-plugin/plugin.json");
   const mcp = await loadJson("plugins/iblusend/.mcp.json");
+  const app = await loadJson("plugins/iblusend/.app.json");
 
   for (const key of ["name", "version", "description", "author", "homepage", "repository", "license", "keywords"]) {
     assert.deepEqual(codex[key], claude[key], key);
@@ -23,6 +24,15 @@ test("OpenAI and Claude manifests share identity, skills, and MCP resource", asy
   assert.equal(claude.skills, "./skills/");
   assert.equal(codex.mcpServers, "./.mcp.json");
   assert.equal(claude.mcpServers, "./.mcp.json");
+  assert.equal(codex.apps, "./.app.json");
+  assert.equal(claude.apps, undefined);
+  assert.deepEqual(app, {
+    apps: {
+      iblusend: {
+        id: "asdk_app_6a8904c0880c8191bbd17d77013abc1f",
+      },
+    },
+  });
   assert.deepEqual(mcp, {
     mcpServers: {
       iblusend: {
@@ -46,11 +56,13 @@ test("both marketplace catalogs resolve the same package", async () => {
   assert.equal(codex.plugins[0].policy.authentication, "ON_INSTALL");
 });
 
-test("package has three shared skills and no OpenAI compatibility placeholder", async () => {
+test("package has three shared skills and an issued OpenAI app mapping", async () => {
   const skillNames = ["contact-device-compliance", "inbox-triage", "safe-draft-and-send"];
   for (const skillName of skillNames) {
     const contents = await readFile(path.join(PLUGIN, "skills", skillName, "SKILL.md"), "utf8");
     assert.match(contents, new RegExp(`^---\\nname: ${skillName}\\n`));
   }
-  await assert.rejects(readFile(path.join(PLUGIN, ".app.json")), /ENOENT/);
+  const app = JSON.parse(await readFile(path.join(PLUGIN, ".app.json"), "utf8"));
+  assert.equal(app.apps.iblusend.id, "asdk_app_6a8904c0880c8191bbd17d77013abc1f");
+  assert.deepEqual(Object.keys(app.apps.iblusend), ["id"]);
 });
