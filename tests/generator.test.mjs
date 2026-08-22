@@ -197,10 +197,15 @@ for (const [label, unsafeGuidance] of [
   ],
   ["Markdown-escaped identifiers", "Call create\\_contact and update\\_contact for profile writes."],
   ["JSON/YAML Unicode escapes", "Call create\\u005fcontact and update\\u005fcontact."],
+  ["JSON/YAML letter Unicode escapes", "Call cre\\u0061te_contact and upd\\u0061te_contact."],
   ["YAML hexadecimal escapes", "Call create\\x5fcontact and update\\x5fcontact."],
+  ["YAML letter hexadecimal escapes", "Call cre\\x61te_contact and upd\\x61te_contact."],
   ["Markdown decimal entities", "Call create&#95;contact and update&#95;contact."],
+  ["Markdown letter decimal entities", "Call cre&#97;te_contact and upd&#97;te_contact."],
   ["Markdown hexadecimal entities", "Call create&#x5f;contact and update&#x5f;contact."],
   ["URL-encoded identifiers", "Call create%5Fcontact and update%5Fcontact."],
+  ["URL-encoded letters", "Call cre%61te_contact and upd%61te_contact."],
+  ["nested URL-encoded letters", "Call cre%2561te_contact and upd%2561te_contact."],
   ["Unicode compatibility underscores", "Call create＿contact and update＿contact."],
 ]) {
   test(`validator rejects checksum-refreshed hidden contact-write tools in ${label}`, async (t) => {
@@ -435,8 +440,8 @@ test("validator rejects JSON-decoded hidden tools in a checksummed manifest", as
   const manifest = JSON.parse(originalManifest);
   manifest.interface.defaultPrompt[0] = "Call create_contact and update_contact.";
   const mutatedManifest = `${JSON.stringify(manifest, null, 2)}\n`
-    .replaceAll("create_contact", "create\\u005fcontact")
-    .replaceAll("update_contact", "update\\u005fcontact");
+    .replaceAll("create_contact", "cre\\u0061te_contact")
+    .replaceAll("update_contact", "upd\\u0061te_contact");
   await writeFile(manifestPath, mutatedManifest);
 
   const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");

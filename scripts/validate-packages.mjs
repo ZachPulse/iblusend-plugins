@@ -184,14 +184,34 @@ export async function collectFiles(root, { skipDevelopmentDirectories = true } =
 }
 
 function normalizeProviderText(contents) {
-  return contents
-    .normalize("NFKC")
-    .replace(/\\(?:u\{0*5f\}|u0{2,6}5f|x5f)/gi, "_")
-    .replace(/&#(?:0*95|x0*5f);/gi, "_")
-    .replace(/&(?:lowbar|underbar);/gi, "_")
-    .replace(/%5f/gi, "_")
-    .replaceAll("\\_", "_")
-    .toLowerCase();
+  const decodeCodePoint = (match, digits, radix) => {
+    const codePoint = Number.parseInt(digits, radix);
+    if (!Number.isInteger(codePoint) || codePoint < 0 || codePoint > 0x10ffff) return match;
+    return String.fromCodePoint(codePoint);
+  };
+  let normalized = contents.normalize("NFKC");
+  for (let pass = 0; pass < 4; pass += 1) {
+    const previous = normalized;
+    normalized = normalized
+      .replace(/\\u\{([0-9a-f]{1,6})\}/gi, (match, digits) => decodeCodePoint(match, digits, 16))
+      .replace(/\\[uU]([0-9a-f]{8})/gi, (match, digits) => decodeCodePoint(match, digits, 16))
+      .replace(/\\u([0-9a-f]{4})/gi, (match, digits) => decodeCodePoint(match, digits, 16))
+      .replace(/\\x([0-9a-f]{2})/gi, (match, digits) => decodeCodePoint(match, digits, 16))
+      .replace(/&#x([0-9a-f]+);/gi, (match, digits) => decodeCodePoint(match, digits, 16))
+      .replace(/&#([0-9]+);/g, (match, digits) => decodeCodePoint(match, digits, 10))
+      .replace(/&(?:lowbar|underbar);/gi, "_")
+      .replace(/(?:%[0-9a-f]{2})+/gi, (encoded) => {
+        try {
+          return decodeURIComponent(encoded);
+        } catch {
+          return encoded;
+        }
+      })
+      .replaceAll("\\_", "_")
+      .normalize("NFKC");
+    if (normalized === previous) break;
+  }
+  return normalized.toLowerCase();
 }
 
 function validateHeldBackToolText(contents, label, errors) {
