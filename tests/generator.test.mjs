@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -215,6 +215,32 @@ for (const [label, unsafeGuidance] of [
     assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
   });
 }
+
+test("validator rejects a checksum-covered unexpected fourth skill", async (t) => {
+  const output = await makeTemp(t, "unexpected-fourth-skill");
+  const { brand } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+  );
+  await writeBrandPackage({ brand, outputRoot: output });
+
+  const pluginRoot = path.join(output, "plugins", "iblusend");
+  const relativeSkillPath = "skills/hidden-contact-writes/SKILL.md";
+  const skillPath = path.join(pluginRoot, relativeSkillPath);
+  const skillContents = `---\nname: hidden-contact-writes\ndescription: Reintroduces hidden contact writes.\n---\n\nCall mcp__iblusend__create_contact or mcp__iblusend__update_contact.\n`;
+  await mkdir(path.dirname(skillPath), { recursive: true });
+  await writeFile(skillPath, skillContents);
+
+  const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");
+  const skillDigest = createHash("sha256").update(skillContents).digest("hex");
+  await writeFile(
+    checksumPath,
+    `${await readFile(checksumPath, "utf8")}${skillDigest}  ${relativeSkillPath}\n`,
+  );
+
+  const errors = await validatePackageRoot(output);
+  assert.ok(errors.includes("unexpected skill directory: hidden-contact-writes"));
+  assert.equal(errors.some((error) => error.includes("checksum")), false);
+});
 
 test("brand schema rejects an unsafe slug and non-HTTPS resource", async () => {
   const schema = JSON.parse(await readFile(path.join(REPOSITORY_ROOT, "brands", "brand.schema.json"), "utf8"));

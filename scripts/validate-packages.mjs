@@ -130,6 +130,25 @@ async function fileExists(filePath) {
   }
 }
 
+async function validateSkillInventory(pluginRoot, errors) {
+  const skillsRoot = path.join(pluginRoot, "skills");
+  let entries;
+  try {
+    entries = await readdir(skillsRoot, { withFileTypes: true });
+  } catch {
+    errors.push("missing skills directory");
+    return;
+  }
+  const requiredSkills = new Set(REQUIRED_SKILLS);
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      errors.push(`unexpected skills entry: ${entry.name}`);
+    } else if (!requiredSkills.has(entry.name)) {
+      errors.push(`unexpected skill directory: ${entry.name}`);
+    }
+  }
+}
+
 export async function collectFiles(root) {
   const result = [];
   async function walk(directory) {
@@ -390,6 +409,7 @@ export async function validatePackageRoot(root) {
   } else if (codex.apps !== undefined) {
     errors.push("OpenAI plugin manifest must not reference .app.json when no app mapping exists");
   }
+  await validateSkillInventory(pluginRoot, errors);
   for (const skillName of REQUIRED_SKILLS) await validateSkill(pluginRoot, skillName, errors);
 
   const assetRequirements = [
