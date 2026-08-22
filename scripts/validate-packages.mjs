@@ -190,12 +190,9 @@ async function validateSkill(pluginRoot, skillName, errors) {
   const description = frontmatter.match(/^description:\s*(.+)$/m)?.[1]?.trim();
   if (name !== skillName) errors.push(`${skillName}: frontmatter name must equal its directory`);
   if (!description) errors.push(`${skillName}: frontmatter description is required`);
+  const normalizedContents = contents.replaceAll("\\_", "_").toLowerCase();
   for (const heldBack of HELD_BACK_TOOLS) {
-    const exactIdentifier = new RegExp(
-      `(^|[^A-Za-z0-9_])${heldBack}($|[^A-Za-z0-9_])`,
-      "i",
-    );
-    if (exactIdentifier.test(contents)) {
+    if (normalizedContents.includes(heldBack)) {
       errors.push(`${skillName}: held-back tool ${heldBack} is named as callable`);
     }
   }

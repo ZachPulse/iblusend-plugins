@@ -191,6 +191,11 @@ for (const [label, unsafeGuidance] of [
   ["plain identifiers", "Call create_contact and update_contact for profile writes."],
   ["bold identifiers", "Call **create_contact** and **update_contact** for profile writes."],
   ["fenced identifiers", "```text\ncreate_contact\nupdate_contact\n```"],
+  [
+    "host-namespaced identifiers",
+    "Call mcp__iblusend__create_contact and iblusend_update_contact for profile writes.",
+  ],
+  ["Markdown-escaped identifiers", "Call create\\_contact and update\\_contact for profile writes."],
 ]) {
   test(`validator rejects checksum-refreshed hidden contact-write tools in ${label}`, async (t) => {
     const output = await makeTemp(t, `hidden-contact-writes-${label.replaceAll(" ", "-")}`);
