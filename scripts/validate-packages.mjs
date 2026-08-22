@@ -214,10 +214,33 @@ function normalizeProviderText(contents) {
   return normalized.toLowerCase();
 }
 
+function providerTextCandidates(contents) {
+  const normalized = normalizeProviderText(contents);
+  let rendered = normalized;
+  for (let pass = 0; pass < 4; pass += 1) {
+    const previous = rendered;
+    rendered = rendered
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/\[([^\]]+)\]\[[^\]]*\]/g, "$1")
+      .replace(/<\/?[a-z][^>]*>/gi, "")
+      .replace(/[`*~]/g, "")
+      .replace(/\p{Default_Ignorable_Code_Point}/gu, "")
+      .normalize("NFKC");
+    if (rendered === previous) break;
+  }
+  const underscoreFormattingRemoved = rendered.replace(
+    /_+/g,
+    (underscores) => underscores.length % 2 === 0 ? "" : "_",
+  );
+  return [normalized, rendered, underscoreFormattingRemoved];
+}
+
 function validateHeldBackToolText(contents, label, errors) {
-  const normalizedContents = normalizeProviderText(contents);
+  const candidates = providerTextCandidates(contents);
   for (const heldBack of HELD_BACK_TOOLS) {
-    if (normalizedContents.includes(heldBack)) {
+    if (candidates.some((candidate) => candidate.includes(heldBack))) {
       errors.push(`${label}: held-back tool ${heldBack} is named as callable`);
     }
   }
