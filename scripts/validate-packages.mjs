@@ -149,6 +149,22 @@ async function validateSkillInventory(pluginRoot, errors) {
   }
 }
 
+async function validateNoSymlinks(root, errors) {
+  async function walk(directory) {
+    const entries = await readdir(directory, { withFileTypes: true });
+    for (const entry of entries) {
+      const absolute = path.join(directory, entry.name);
+      const relative = path.relative(root, absolute).split(path.sep).join("/");
+      if (entry.isSymbolicLink()) {
+        errors.push(`${relative}: symbolic links are not allowed`);
+      } else if (entry.isDirectory()) {
+        await walk(absolute);
+      }
+    }
+  }
+  await walk(root);
+}
+
 export async function collectFiles(root) {
   const result = [];
   async function walk(directory) {
@@ -162,6 +178,29 @@ export async function collectFiles(root) {
   }
   await walk(path.resolve(root));
   return result.sort();
+}
+
+async function validateSkillTreeText(pluginRoot, errors) {
+  const skillsRoot = path.join(pluginRoot, "skills");
+  let files;
+  try {
+    files = await collectFiles(skillsRoot);
+  } catch {
+    return;
+  }
+  for (const absolute of files) {
+    const relative = path.relative(pluginRoot, absolute).split(path.sep).join("/");
+    const topLevelSkill = relative.match(/^skills\/([^/]+)\/SKILL\.md$/)?.[1];
+    const label = topLevelSkill ?? relative;
+    const normalizedContents = (await readFile(absolute, "utf8"))
+      .replaceAll("\\_", "_")
+      .toLowerCase();
+    for (const heldBack of HELD_BACK_TOOLS) {
+      if (normalizedContents.includes(heldBack)) {
+        errors.push(`${label}: held-back tool ${heldBack} is named as callable`);
+      }
+    }
+  }
 }
 
 function validatePng(buffer, errors, label, minimumWidth, minimumHeight) {
@@ -209,12 +248,6 @@ async function validateSkill(pluginRoot, skillName, errors) {
   const description = frontmatter.match(/^description:\s*(.+)$/m)?.[1]?.trim();
   if (name !== skillName) errors.push(`${skillName}: frontmatter name must equal its directory`);
   if (!description) errors.push(`${skillName}: frontmatter description is required`);
-  const normalizedContents = contents.replaceAll("\\_", "_").toLowerCase();
-  for (const heldBack of HELD_BACK_TOOLS) {
-    if (normalizedContents.includes(heldBack)) {
-      errors.push(`${skillName}: held-back tool ${heldBack} is named as callable`);
-    }
-  }
   if (/\b(bulk send|blast|bypass compliance|scrape contacts)\b/i.test(contents)) {
     errors.push(`${skillName}: contains prohibited bulk or bypass language`);
   }
@@ -326,6 +359,7 @@ export async function validatePackageRoot(root) {
 
   if (!slug) return errors;
   const pluginRoot = path.join(absoluteRoot, "plugins", slug);
+  await validateNoSymlinks(pluginRoot, errors);
   const codex = await readJson(path.join(pluginRoot, ".codex-plugin", "plugin.json"), errors, "OpenAI plugin manifest");
   const claude = await readJson(path.join(pluginRoot, ".claude-plugin", "plugin.json"), errors, "Claude plugin manifest");
   const mcp = await readJson(path.join(pluginRoot, ".mcp.json"), errors, "MCP manifest");
@@ -410,6 +444,7 @@ export async function validatePackageRoot(root) {
     errors.push("OpenAI plugin manifest must not reference .app.json when no app mapping exists");
   }
   await validateSkillInventory(pluginRoot, errors);
+  await validateSkillTreeText(pluginRoot, errors);
   for (const skillName of REQUIRED_SKILLS) await validateSkill(pluginRoot, skillName, errors);
 
   const assetRequirements = [

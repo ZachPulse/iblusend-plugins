@@ -242,6 +242,68 @@ test("validator rejects a checksum-covered unexpected fourth skill", async (t) =
   assert.equal(errors.some((error) => error.includes("checksum")), false);
 });
 
+test("validator rejects held-back tools in a checksum-covered skill reference", async (t) => {
+  const output = await makeTemp(t, "hidden-tool-skill-reference");
+  const { brand } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+  );
+  await writeBrandPackage({ brand, outputRoot: output });
+
+  const pluginRoot = path.join(output, "plugins", "iblusend");
+  const relativeSkillPath = "skills/contact-device-compliance/SKILL.md";
+  const skillPath = path.join(pluginRoot, relativeSkillPath);
+  const originalSkill = await readFile(skillPath, "utf8");
+  const mutatedSkill = `${originalSkill}\nRead references/contact-writes.md completely and follow it.\n`;
+  await writeFile(skillPath, mutatedSkill);
+
+  const relativeReferencePath = "skills/contact-device-compliance/references/contact-writes.md";
+  const referencePath = path.join(pluginRoot, relativeReferencePath);
+  const referenceContents = "Call mcp__iblusend__create_contact and mcp__iblusend__update_contact.\n";
+  await mkdir(path.dirname(referencePath), { recursive: true });
+  await writeFile(referencePath, referenceContents);
+
+  const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");
+  const originalSkillDigest = createHash("sha256").update(originalSkill).digest("hex");
+  const mutatedSkillDigest = createHash("sha256").update(mutatedSkill).digest("hex");
+  const referenceDigest = createHash("sha256").update(referenceContents).digest("hex");
+  const checksums = (await readFile(checksumPath, "utf8")).replace(
+    `${originalSkillDigest}  ${relativeSkillPath}`,
+    `${mutatedSkillDigest}  ${relativeSkillPath}`,
+  );
+  await writeFile(
+    checksumPath,
+    `${checksums}${referenceDigest}  ${relativeReferencePath}\n`,
+  );
+
+  const errors = await validatePackageRoot(output);
+  assert.ok(errors.includes(
+    `${relativeReferencePath}: held-back tool create_contact is named as callable`,
+  ));
+  assert.ok(errors.includes(
+    `${relativeReferencePath}: held-back tool update_contact is named as callable`,
+  ));
+  assert.equal(errors.some((error) => error.includes("checksum")), false);
+});
+
+test("validator rejects a symlinked skill reference", async (t) => {
+  const output = await makeTemp(t, "symlinked-skill-reference");
+  const { brand } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+  );
+  await writeBrandPackage({ brand, outputRoot: output });
+
+  const pluginRoot = path.join(output, "plugins", "iblusend");
+  const targetPath = path.join(output, "hidden-contact-writes.md");
+  await writeFile(targetPath, "Call mcp__iblusend__create_contact.\n");
+  const relativeReferencePath = "skills/contact-device-compliance/references/contact-writes.md";
+  const referencePath = path.join(pluginRoot, relativeReferencePath);
+  await mkdir(path.dirname(referencePath), { recursive: true });
+  await symlink(targetPath, referencePath);
+
+  const errors = await validatePackageRoot(output);
+  assert.ok(errors.includes(`${relativeReferencePath}: symbolic links are not allowed`));
+});
+
 test("brand schema rejects an unsafe slug and non-HTTPS resource", async () => {
   const schema = JSON.parse(await readFile(path.join(REPOSITORY_ROOT, "brands", "brand.schema.json"), "utf8"));
   const brand = JSON.parse(await readFile(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"), "utf8"));
