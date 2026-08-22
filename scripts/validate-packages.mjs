@@ -165,12 +165,15 @@ async function validateNoSymlinks(root, errors) {
   await walk(root);
 }
 
-export async function collectFiles(root) {
+export async function collectFiles(root, { skipDevelopmentDirectories = true } = {}) {
   const result = [];
   async function walk(directory) {
     const entries = await readdir(directory, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.name === ".git" || entry.name === "node_modules" || entry.name === "dist") continue;
+      if (
+        skipDevelopmentDirectories &&
+        (entry.name === ".git" || entry.name === "node_modules" || entry.name === "dist")
+      ) continue;
       const absolute = path.join(directory, entry.name);
       if (entry.isDirectory()) await walk(absolute);
       else if (entry.isFile()) result.push(absolute);
@@ -180,25 +183,11 @@ export async function collectFiles(root) {
   return result.sort();
 }
 
-async function validateSkillTreeText(pluginRoot, errors) {
-  const skillsRoot = path.join(pluginRoot, "skills");
-  let files;
-  try {
-    files = await collectFiles(skillsRoot);
-  } catch {
-    return;
-  }
-  for (const absolute of files) {
-    const relative = path.relative(pluginRoot, absolute).split(path.sep).join("/");
-    const topLevelSkill = relative.match(/^skills\/([^/]+)\/SKILL\.md$/)?.[1];
-    const label = topLevelSkill ?? relative;
-    const normalizedContents = (await readFile(absolute, "utf8"))
-      .replaceAll("\\_", "_")
-      .toLowerCase();
-    for (const heldBack of HELD_BACK_TOOLS) {
-      if (normalizedContents.includes(heldBack)) {
-        errors.push(`${label}: held-back tool ${heldBack} is named as callable`);
-      }
+function validateHeldBackToolText(contents, label, errors) {
+  const normalizedContents = contents.replaceAll("\\_", "_").toLowerCase();
+  for (const heldBack of HELD_BACK_TOOLS) {
+    if (normalizedContents.includes(heldBack)) {
+      errors.push(`${label}: held-back tool ${heldBack} is named as callable`);
     }
   }
 }
@@ -293,7 +282,7 @@ async function validateChecksums(pluginRoot, errors) {
     }
     expected.set(match[2], match[1]);
   }
-  const files = await collectFiles(pluginRoot);
+  const files = await collectFiles(pluginRoot, { skipDevelopmentDirectories: false });
   for (const absolute of files) {
     const relative = path.relative(pluginRoot, absolute).split(path.sep).join("/");
     if (relative === "CHECKSUMS.sha256") continue;
@@ -309,11 +298,13 @@ async function validateChecksums(pluginRoot, errors) {
 }
 
 async function validatePluginText(pluginRoot, errors) {
-  const files = await collectFiles(pluginRoot);
+  const files = await collectFiles(pluginRoot, { skipDevelopmentDirectories: false });
   for (const absolute of files) {
     if (absolute.endsWith(".png")) continue;
-    const relative = path.relative(pluginRoot, absolute);
+    const relative = path.relative(pluginRoot, absolute).split(path.sep).join("/");
     const contents = await readFile(absolute, "utf8");
+    const topLevelSkill = relative.match(/^skills\/([^/]+)\/SKILL\.md$/)?.[1];
+    validateHeldBackToolText(contents, topLevelSkill ?? relative, errors);
     const markerPatterns = [
       /\[TODO:/i,
       /\bCHANGEME\b/i,
@@ -338,6 +329,20 @@ export async function validatePackageRoot(root) {
   const claudeMarketplacePath = path.join(absoluteRoot, ".claude-plugin", "marketplace.json");
   const codexMarketplace = await readJson(codexMarketplacePath, errors, ".agents/plugins/marketplace.json");
   const claudeMarketplace = await readJson(claudeMarketplacePath, errors, ".claude-plugin/marketplace.json");
+  if (codexMarketplace) {
+    validateHeldBackToolText(
+      JSON.stringify(codexMarketplace),
+      ".agents/plugins/marketplace.json",
+      errors,
+    );
+  }
+  if (claudeMarketplace) {
+    validateHeldBackToolText(
+      JSON.stringify(claudeMarketplace),
+      ".claude-plugin/marketplace.json",
+      errors,
+    );
+  }
   const codexEntry = codexMarketplace?.plugins?.[0];
   const claudeEntry = claudeMarketplace?.plugins?.[0];
   const slug = codexEntry?.name;
@@ -444,7 +449,6 @@ export async function validatePackageRoot(root) {
     errors.push("OpenAI plugin manifest must not reference .app.json when no app mapping exists");
   }
   await validateSkillInventory(pluginRoot, errors);
-  await validateSkillTreeText(pluginRoot, errors);
   for (const skillName of REQUIRED_SKILLS) await validateSkill(pluginRoot, skillName, errors);
 
   const assetRequirements = [
