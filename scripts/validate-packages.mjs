@@ -191,7 +191,13 @@ async function validateSkill(pluginRoot, skillName, errors) {
   if (name !== skillName) errors.push(`${skillName}: frontmatter name must equal its directory`);
   if (!description) errors.push(`${skillName}: frontmatter description is required`);
   for (const heldBack of HELD_BACK_TOOLS) {
-    if (contents.includes(`\`${heldBack}\``)) errors.push(`${skillName}: held-back tool ${heldBack} is named as callable`);
+    const exactIdentifier = new RegExp(
+      `(^|[^A-Za-z0-9_])${heldBack}($|[^A-Za-z0-9_])`,
+      "i",
+    );
+    if (exactIdentifier.test(contents)) {
+      errors.push(`${skillName}: held-back tool ${heldBack} is named as callable`);
+    }
   }
   if (/\b(bulk send|blast|bypass compliance|scrape contacts)\b/i.test(contents)) {
     errors.push(`${skillName}: contains prohibited bulk or bypass language`);

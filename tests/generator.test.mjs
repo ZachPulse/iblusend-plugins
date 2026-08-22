@@ -187,21 +187,29 @@ for (const [label, mutate] of [
   });
 }
 
-test("validator rejects checksum-refreshed hidden contact-write tools", async (t) => {
-  const output = await makeTemp(t, "hidden-contact-writes");
-  const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
-  await writeBrandPackage({ brand, outputRoot: output });
+for (const [label, unsafeGuidance] of [
+  ["plain identifiers", "Call create_contact and update_contact for profile writes."],
+  ["bold identifiers", "Call **create_contact** and **update_contact** for profile writes."],
+  ["fenced identifiers", "```text\ncreate_contact\nupdate_contact\n```"],
+]) {
+  test(`validator rejects checksum-refreshed hidden contact-write tools in ${label}`, async (t) => {
+    const output = await makeTemp(t, `hidden-contact-writes-${label.replaceAll(" ", "-")}`);
+    const { brand } = await loadAndValidateBrand(
+      path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+    );
+    await writeBrandPackage({ brand, outputRoot: output });
 
-  const errors = await validateChecksumRefreshedSkillMutation(
-    output,
-    "contact-device-compliance",
-    (contents) => `${contents}\nUse \`create_contact\` and \`update_contact\` for profile writes.\n`,
-  );
+    const errors = await validateChecksumRefreshedSkillMutation(
+      output,
+      "contact-device-compliance",
+      (contents) => `${contents}\n${unsafeGuidance}\n`,
+    );
 
-  assert.ok(errors.includes("contact-device-compliance: held-back tool create_contact is named as callable"));
-  assert.ok(errors.includes("contact-device-compliance: held-back tool update_contact is named as callable"));
-  assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
-});
+    assert.ok(errors.includes("contact-device-compliance: held-back tool create_contact is named as callable"));
+    assert.ok(errors.includes("contact-device-compliance: held-back tool update_contact is named as callable"));
+    assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
+  });
+}
 
 test("brand schema rejects an unsafe slug and non-HTTPS resource", async () => {
   const schema = JSON.parse(await readFile(path.join(REPOSITORY_ROOT, "brands", "brand.schema.json"), "utf8"));
