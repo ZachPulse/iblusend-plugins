@@ -266,6 +266,31 @@ for (const [label, unsafeGuidance, expectedError] of [
     "Call cre<![CDATA[]]>ate_contact and upd<![CDATA[]]>ate_contact.",
     "HTML processing instructions and declarations are not allowed",
   ],
+  [
+    "percent-encoded HTML processing instruction",
+    "Call cre%3C%3Fhidden%3F%3Eate_contact and upd%3C%3Fhidden%3F%3Eate_contact.",
+    "HTML processing instructions and declarations are not allowed",
+  ],
+  [
+    "nested percent-encoded HTML processing instruction",
+    "Call cre%253C%253Fhidden%253F%253Eate_contact and upd%253C%253Fhidden%253F%253Eate_contact.",
+    "HTML processing instructions and declarations are not allowed",
+  ],
+  [
+    "percent-encoded HTML declaration",
+    "Call cre%3C%21DOCTYPE%20html%3Eate_contact and upd%3C%21DOCTYPE%20html%3Eate_contact.",
+    "HTML processing instructions and declarations are not allowed",
+  ],
+  [
+    "percent-encoded HTML CDATA section",
+    "Call cre%3C%21%5BCDATA%5B%5D%5D%3Eate_contact and upd%3C%21%5BCDATA%5B%5D%5D%3Eate_contact.",
+    "HTML processing instructions and declarations are not allowed",
+  ],
+  [
+    "percent-encoded named HTML entity",
+    "Call cre%26aopf%3Bte_contact and upd%26aopf%3Bte_contact.",
+    "named HTML entities are not allowed",
+  ],
 ]) {
   test(`validator rejects checksum-refreshed provider syntax in ${label}`, async (t) => {
     const output = await makeTemp(t, `provider-syntax-${label.replace(/[^a-z0-9-]+/gi, "-")}`);

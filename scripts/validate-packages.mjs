@@ -247,16 +247,17 @@ function validateHeldBackToolText(contents, label, errors) {
 }
 
 function validateProviderSyntax(contents, label, errors) {
-  if (/&[a-z][a-z0-9]+;/i.test(contents)) {
+  const candidates = [contents, normalizeProviderText(contents)];
+  if (candidates.some((candidate) => /&[a-z][a-z0-9]+;/i.test(candidate))) {
     errors.push(`${label}: named HTML entities are not allowed`);
   }
-  if (/!?\[[^\]]*\]\s*(?:\(|\[)/.test(contents)) {
+  if (candidates.some((candidate) => /!?\[[^\]]*\]\s*(?:\(|\[)/.test(candidate))) {
     errors.push(`${label}: Markdown links are not allowed`);
   }
-  if (/<\/?[a-z][a-z0-9-]*(?:\s|\/?>)/i.test(contents)) {
+  if (candidates.some((candidate) => /<\/?[a-z][a-z0-9-]*(?:\s|\/?>)/i.test(candidate))) {
     errors.push(`${label}: HTML tags are not allowed`);
   }
-  if (/<\?|<!(?!--)/i.test(contents)) {
+  if (candidates.some((candidate) => /<\?|<!(?!--)/i.test(candidate))) {
     errors.push(`${label}: HTML processing instructions and declarations are not allowed`);
   }
 }
