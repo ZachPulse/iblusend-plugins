@@ -256,6 +256,9 @@ function validateProviderSyntax(contents, label, errors) {
   if (/<\/?[a-z][a-z0-9-]*(?:\s|\/?>)/i.test(contents)) {
     errors.push(`${label}: HTML tags are not allowed`);
   }
+  if (/<\?|<!(?!--)/i.test(contents)) {
+    errors.push(`${label}: HTML processing instructions and declarations are not allowed`);
+  }
 }
 
 function validatePng(buffer, errors, label, minimumWidth, minimumHeight) {

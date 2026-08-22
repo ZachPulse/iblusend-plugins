@@ -251,6 +251,21 @@ for (const [label, unsafeGuidance, expectedError] of [
     'Call cre<strong title="x>y">ate</strong>_contact and upd<strong title="x>y">ate</strong>_contact.',
     "HTML tags are not allowed",
   ],
+  [
+    "HTML processing instruction",
+    "Call cre<?hidden?>ate_contact and upd<?hidden?>ate_contact.",
+    "HTML processing instructions and declarations are not allowed",
+  ],
+  [
+    "HTML declaration",
+    "Call cre<!DOCTYPE html>ate_contact and upd<!DOCTYPE html>ate_contact.",
+    "HTML processing instructions and declarations are not allowed",
+  ],
+  [
+    "HTML CDATA section",
+    "Call cre<![CDATA[]]>ate_contact and upd<![CDATA[]]>ate_contact.",
+    "HTML processing instructions and declarations are not allowed",
+  ],
 ]) {
   test(`validator rejects checksum-refreshed provider syntax in ${label}`, async (t) => {
     const output = await makeTemp(t, `provider-syntax-${label.replace(/[^a-z0-9-]+/gi, "-")}`);
