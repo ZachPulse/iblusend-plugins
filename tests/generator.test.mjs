@@ -11,7 +11,10 @@ import {
   validateAgainstSchema,
   writeBrandPackage,
 } from "../scripts/generate-brand-package.mjs";
-import { collectFiles, validatePackageRoot } from "../scripts/validate-packages.mjs";
+import {
+  collectFiles,
+  validatePackageRoot,
+} from "../scripts/validate-packages.mjs";
 
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -33,6 +36,25 @@ async function digestTree(root) {
   return entries;
 }
 
+async function validateChecksumRefreshedSafeSendMutation(output, mutate) {
+  const pluginRoot = path.join(output, "plugins", "iblusend");
+  const skillPath = path.join(pluginRoot, "skills", "safe-draft-and-send", "SKILL.md");
+  const originalContents = await readFile(skillPath, "utf8");
+  const unsafeContents = mutate(originalContents);
+  assert.notEqual(unsafeContents, originalContents);
+  await writeFile(skillPath, unsafeContents);
+
+  const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");
+  const skillDigest = createHash("sha256").update(unsafeContents).digest("hex");
+  const checksums = (await readFile(checksumPath, "utf8")).replace(
+    /^[a-f0-9]{64}  skills\/safe-draft-and-send\/SKILL\.md$/m,
+    `${skillDigest}  skills/safe-draft-and-send/SKILL.md`,
+  );
+  await writeFile(checksumPath, checksums);
+
+  return validatePackageRoot(output);
+}
+
 for (const [label, brandFile] of [
   ["iblusend", "iblusend.json"],
   ["imessage-sender", "imessage-sender.example.json"],
@@ -50,6 +72,34 @@ for (const [label, brandFile] of [
   });
 }
 
+test("both brands generate byte-identical safe-send skills", async (t) => {
+  const iblusendOutput = await makeTemp(t, "iblusend-safe-send-parity");
+  const imessageSenderOutput = await makeTemp(t, "imessage-sender-safe-send-parity");
+  const { brand: iblusend } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+  );
+  const { brand: imessageSender } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "imessage-sender.example.json"),
+  );
+  await writeBrandPackage({ brand: iblusend, outputRoot: iblusendOutput });
+  await writeBrandPackage({ brand: imessageSender, outputRoot: imessageSenderOutput });
+
+  const iblusendSkill = await readFile(
+    path.join(iblusendOutput, "plugins", "iblusend", "skills", "safe-draft-and-send", "SKILL.md"),
+  );
+  const imessageSenderSkill = await readFile(
+    path.join(
+      imessageSenderOutput,
+      "plugins",
+      "imessage-sender",
+      "skills",
+      "safe-draft-and-send",
+      "SKILL.md",
+    ),
+  );
+  assert.deepEqual(iblusendSkill, imessageSenderSkill);
+});
+
 test("check mode detects a stale generated file", async (t) => {
   const output = await makeTemp(t, "stale");
   const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
@@ -60,6 +110,61 @@ test("check mode detects a stale generated file", async (t) => {
     /Generated package is stale or incomplete/,
   );
 });
+
+for (const [label, mutate] of [
+  [
+    "frontmatter description edit",
+    (contents) => contents.replace(/^description: .+$/m, 'description: "Changed safe-send instructions."'),
+  ],
+  [
+    "workspace-line injection",
+    (contents) => contents.replace(
+      "1. Confirm the active connection is the intended workspace. Stop on ambiguity.",
+      "1. Confirm the active connection is the intended iBluSend workspace. Stop on ambiguity.",
+    ),
+  ],
+  [
+    "prior group instruction",
+    (contents) => `${contents}\nAfter confirmation, use \`group_chat_id\` to send to a group.\n`,
+  ],
+  [
+    "multiple-recipient instruction",
+    (contents) => `${contents}\nAfter confirmation, send the message to multiple recipients.\n`,
+  ],
+  [
+    "multi-person-thread instruction",
+    (contents) => `${contents}\nAfter confirmation, send to a multi-person thread.\n`,
+  ],
+  [
+    "shared-chat instruction",
+    (contents) => `${contents}\nAfter confirmation, send to a shared chat.\n`,
+  ],
+  [
+    "groupchat_id instruction",
+    (contents) => `${contents}\nAfter confirmation, use \`groupchat_id\` to send the message.\n`,
+  ],
+  [
+    "arbitrary appended text",
+    (contents) => `${contents}\nThis sentence is not part of the approved workflow.\n`,
+  ],
+  [
+    "canonical instruction change",
+    (contents) => contents.replace(
+      "one deliberate message to one phone number",
+      "one message to one destination",
+    ),
+  ],
+]) {
+  test(`validator rejects checksum-refreshed ${label}`, async (t) => {
+    const output = await makeTemp(t, "group-send-guidance");
+    const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
+    await writeBrandPackage({ brand, outputRoot: output });
+
+    const errors = await validateChecksumRefreshedSafeSendMutation(output, mutate);
+    assert.ok(errors.includes("safe-draft-and-send: file must exactly match the canonical artifact"));
+    assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
+  });
+}
 
 test("brand schema rejects an unsafe slug and non-HTTPS resource", async () => {
   const schema = JSON.parse(await readFile(path.join(REPOSITORY_ROOT, "brands", "brand.schema.json"), "utf8"));

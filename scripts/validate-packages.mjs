@@ -5,6 +5,8 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { renderSafeSendSkill } from "./safe-send-body.mjs";
+
 const REQUIRED_SKILLS = [
   "contact-device-compliance",
   "inbox-triage",
@@ -65,6 +67,8 @@ const CLAUDE_KEYS = new Set([
 const ISSUED_OPENAI_APP_IDS = new Map([
   ["iblusend", "asdk_app_6a8904c0880c8191bbd17d77013abc1f"],
 ]);
+const SAFE_SEND_SKILL_MISMATCH_ERROR =
+  "safe-draft-and-send: file must exactly match the canonical artifact";
 
 function parseArgs(argv) {
   const options = { root: "." };
@@ -165,10 +169,21 @@ async function validateSkill(pluginRoot, skillName, errors) {
     errors.push(`missing skill: skills/${skillName}/SKILL.md`);
     return;
   }
-  if (!contents.startsWith("---\n")) errors.push(`${skillName}: YAML frontmatter must come first`);
-  const frontmatterEnd = contents.indexOf("\n---\n", 4);
-  if (frontmatterEnd < 0) errors.push(`${skillName}: YAML frontmatter is not closed`);
-  const frontmatter = contents.slice(4, frontmatterEnd < 0 ? contents.length : frontmatterEnd);
+  if (skillName === "safe-draft-and-send") {
+    if (contents !== renderSafeSendSkill()) errors.push(SAFE_SEND_SKILL_MISMATCH_ERROR);
+    return;
+  }
+  let frontmatter = "";
+  if (!contents.startsWith("---\n")) {
+    errors.push(`${skillName}: YAML frontmatter must come first`);
+  } else {
+    const frontmatterEnd = contents.indexOf("\n---\n", 4);
+    if (frontmatterEnd < 0) {
+      errors.push(`${skillName}: YAML frontmatter is not closed`);
+    } else {
+      frontmatter = contents.slice(4, frontmatterEnd);
+    }
+  }
   const name = frontmatter.match(/^name:\s*(.+)$/m)?.[1]?.trim();
   const description = frontmatter.match(/^description:\s*(.+)$/m)?.[1]?.trim();
   if (name !== skillName) errors.push(`${skillName}: frontmatter name must equal its directory`);
@@ -178,11 +193,6 @@ async function validateSkill(pluginRoot, skillName, errors) {
   }
   if (/\b(bulk send|blast|bypass compliance|scrape contacts)\b/i.test(contents)) {
     errors.push(`${skillName}: contains prohibited bulk or bypass language`);
-  }
-  if (skillName === "safe-draft-and-send") {
-    for (const phrase of ["explicit confirmation", "Call `send_message` once", "Never retry an ambiguous"]) {
-      if (!contents.includes(phrase)) errors.push(`${skillName}: missing safety phrase ${JSON.stringify(phrase)}`);
-    }
   }
 }
 

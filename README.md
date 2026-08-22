@@ -86,7 +86,7 @@ submission runbooks under [`docs/submission/`](docs/submission/).
 - OAuth is discovered from the resource at runtime; no client secret or API key belongs here.
 - Every authorization grant is bound to one workspace.
 - Write tools require `Read and act` consent.
-- Sending workflows stop on the exact workspace, recipients, and final content for host approval.
+- Sending workflows stop on the exact workspace, one 1:1 recipient, and final content for host approval.
 
 Report security concerns privately to [support@iblusend.com](mailto:support@iblusend.com).
 

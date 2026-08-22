@@ -66,3 +66,23 @@ test("package has three shared skills and an issued OpenAI app mapping", async (
   assert.equal(app.apps.iblusend.id, "asdk_app_6a8904c0880c8191bbd17d77013abc1f");
   assert.deepEqual(Object.keys(app.apps.iblusend), ["id"]);
 });
+
+test("checked-in provider copy preserves group reads and the 8/11 contract", async () => {
+  const inboxSkill = await readFile(
+    path.join(PLUGIN, "skills", "inbox-triage", "SKILL.md"),
+    "utf8",
+  );
+  assert.match(inboxSkill, /read one phone or one existing group at a time/);
+
+  const checklist = await readFile(path.join(PLUGIN, "SUBMISSION_CHECKLIST.md"), "utf8");
+  assert.match(checklist, /Read-only access discovers eight tools; Read and act discovers eleven/);
+  assert.doesNotMatch(checklist, /thirteen/i);
+
+  const openAiSubmission = await readFile(path.join(ROOT, "docs", "submission", "openai.md"), "utf8");
+  assert.match(openAiSubmission, /exactly eight and eleven tools respectively/);
+  assert.doesNotMatch(openAiSubmission, /thirteen/i);
+
+  const localBeta = await readFile(path.join(ROOT, "docs", "local-beta.md"), "utf8");
+  assert.match(localBeta, /OAuth Read and act: exactly eleven tools/);
+  assert.match(localBeta, /API-key Read and act: exactly thirteen tools/);
+});

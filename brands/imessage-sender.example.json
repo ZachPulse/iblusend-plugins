@@ -4,7 +4,7 @@
   "package": {
     "slug": "imessage-sender",
     "displayName": "iMessage Sender",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Safely triage conversations, manage contacts, and send confirmed iMessages and SMS through one consented workspace.",
     "longDescription": "Connect one iMessage Sender workspace to inspect conversations, contacts, devices, groups, delivery status, opt-out state, and bot status. Draft and send only after showing the exact destination and content for approval.",
     "category": "Productivity",

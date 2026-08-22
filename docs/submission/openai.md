@@ -16,7 +16,7 @@ Official references:
 - The public MCP endpoint is served over HTTPS and passes OpenAI's MCP scan.
 - OAuth metadata, PKCE S256, CIMD/DCR behavior, exact resource/issuer handling, refresh rotation,
   revocation, and one-workspace consent are live and tested.
-- Read-only and Read and act scopes expose exactly eight and thirteen tools respectively.
+- Read-only and Read and act scopes expose exactly eight and eleven tools respectively.
 - Every tool has accurate read-only/destructive/open-world annotations; send remains consequential.
 - Support, privacy, terms, documentation, test cases, country availability, and policy attestations
   are final.
@@ -42,7 +42,8 @@ Attach or record:
 - served discovery and 401 challenge receipts;
 - OAuth allow/deny, scope, refresh, revoke, and membership-revocation cases;
 - tool inventory and annotations;
-- synthetic examples for all thirteen tools, including refused unsafe send variants;
+- synthetic examples for all eleven tools, including refused group-target and other unsafe send
+  variants;
 - exact send preview and provider confirmation behavior;
 - legal/support URLs and publisher identity; and
 - rollback owner and procedure.

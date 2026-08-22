@@ -5,6 +5,8 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { renderSafeSendSkill } from "./safe-send-body.mjs";
+
 const GENERATOR_VERSION = 2;
 const SCREENSHOTS = [
   ["screenshot-inbox-triage.png", "INBOX TRIAGE", "READ ONLY"],
@@ -579,67 +581,6 @@ End with:
 `;
 }
 
-function safeDraftAndSendSkill(brand) {
-  return `${skillFrontmatter(
-    "safe-draft-and-send",
-    `Draft one ${brand.copy.channelName} message, show its exact destination and content, require confirmation, send once, and check status.`,
-  )}
-# Safe draft and send
-
-Use this workflow for one deliberate message to one phone number or one existing group. A request
-to draft, rewrite, summarize, or prepare is not permission to send.
-
-## Non-negotiable send boundary
-
-- Before calling \`send_message\`, show the connected workspace, destination, whether it is a
-  one-to-one thread or existing group, chosen device when applicable, exact final text, every media
-  URL, and any message effect.
-- Ask for explicit confirmation of that exact preview. Stop before the tool call until the user
-  confirms. Provider confirmation UI is an additional approval boundary, not a replacement for
-  the preview.
-- If any destination, workspace, device, attachment, effect, or text changes after confirmation,
-  show a new preview and obtain new confirmation.
-- Call \`send_message\` once. Never retry an ambiguous timeout or transport failure; first check the
-  returned message identifier or status so a retry cannot create a duplicate.
-- Never split one request into multiple recipients, loop over contacts, or present this workflow as
-  bulk messaging.
-
-## Public-v1 limits
-
-- One-to-one: text, supported media, or a supported effect.
-- Existing group: text only.
-- No new group creation, group media, group effects, reactions, voice memos, typing indicators, or
-  native mark-read operation.
-- Respect platform pacing, plan, device, and compliance enforcement. Never suggest a bypass.
-
-## Workflow
-
-1. Confirm the active connection is the intended ${brand.copy.workspaceName}. Stop on ambiguity.
-2. Resolve one recipient using \`list_contacts\` or resolve one existing group using \`list_groups\`.
-   Never guess between partial matches.
-3. For a phone recipient, call \`get_opt_out_status\`. If opted out, stop; do not draft around or
-   bypass the restriction.
-4. Use \`list_devices\` when line selection matters. Report stale, offline, or missing device state
-   instead of promising delivery.
-5. Draft the message. Keep factual claims grounded in context the user supplied or conversation
-   content they asked you to retrieve.
-6. Display the exact confirmation preview described above and wait.
-7. After explicit confirmation and the host's approval, call \`send_message\` exactly once with only
-   the approved fields.
-8. Preserve the returned message identifier. Use \`check_message_status\` once when available and
-   report the status literally: queued, sent, delivered, read, failed, or unknown.
-
-## Failure handling
-
-- A queued or sent status is not proof of delivery or a reply.
-- On an ambiguous call result, do not resend. Report the uncertainty and check status by the
-  original identifier when one exists.
-- On a scope, workspace, opt-out, device, or validation error, stop and explain the failed boundary.
-- Never claim that provider approval is cryptographically proven by MCP; it is enforced jointly by
-  this pause, provider UI, and server safeguards.
-`;
-}
-
 function contactComplianceSkill(brand) {
   return `${skillFrontmatter(
     "contact-device-compliance",
@@ -852,7 +793,8 @@ Authorization header to this package.
 - \`contact-device-compliance\` — one contact/device/compliance operation at a time.
 
 The connection is bound to one workspace per consent grant. Read-only grants discover only read
-tools; Read and act grants add the curated write tools. This plugin is not a bulk sender.
+tools; Read and act grants add the curated write tools. Public OAuth sends are 1:1 only; group
+conversations remain readable. This plugin is not a bulk sender.
 `;
 }
 
@@ -863,7 +805,7 @@ function submissionChecklist(brand) {
 - [ ] Package version is \`${brand.package.version}\` everywhere.
 - [ ] MCP resource is exactly \`${brand.mcp.resourceUrl}\`.
 - [ ] OAuth discovery, PKCE, workspace consent, scopes, refresh, and revocation pass served tests.
-- [ ] Read-only access discovers eight tools; Read and act discovers thirteen.
+- [ ] Read-only access discovers eight tools; Read and act discovers eleven.
 - [ ] Send is marked consequential and provider approval remains enabled.
 - [ ] Support, privacy, and terms URLs are publicly reachable.
 - [ ] Screenshots match the current behavior and contain no customer data.
@@ -905,7 +847,7 @@ export function renderBrandPackage(brand) {
   addText(`${pluginPrefix}/README.md`, packageReadme(brand));
   addText(`${pluginPrefix}/SUBMISSION_CHECKLIST.md`, submissionChecklist(brand));
   addText(`${pluginPrefix}/skills/inbox-triage/SKILL.md`, inboxTriageSkill(brand));
-  addText(`${pluginPrefix}/skills/safe-draft-and-send/SKILL.md`, safeDraftAndSendSkill(brand));
+  addText(`${pluginPrefix}/skills/safe-draft-and-send/SKILL.md`, renderSafeSendSkill());
   addText(`${pluginPrefix}/skills/contact-device-compliance/SKILL.md`, contactComplianceSkill(brand));
   files.set(`${pluginPrefix}/assets/icon.png`, makeIcon(brand));
   files.set(`${pluginPrefix}/assets/logo.png`, makeLogo(brand, false));

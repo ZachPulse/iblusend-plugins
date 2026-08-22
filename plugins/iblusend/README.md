@@ -16,4 +16,5 @@ Authorization header to this package.
 - `contact-device-compliance` — one contact/device/compliance operation at a time.
 
 The connection is bound to one workspace per consent grant. Read-only grants discover only read
-tools; Read and act grants add the curated write tools. This plugin is not a bulk sender.
+tools; Read and act grants add the curated write tools. Public OAuth sends are 1:1 only; group
+conversations remain readable. This plugin is not a bulk sender.

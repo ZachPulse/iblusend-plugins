@@ -6,14 +6,14 @@
     "url": "https://iblusend.com"
   },
   "description": "Official iBluSend tools and guarded messaging workflows for one consented workspace.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "plugins": [
     {
       "name": "iblusend",
       "displayName": "iBluSend",
       "source": "./plugins/iblusend",
       "description": "Safely triage conversations, manage contacts, and send confirmed iMessages and SMS through one consented workspace.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "iBluSend",
         "email": "support@iblusend.com",
