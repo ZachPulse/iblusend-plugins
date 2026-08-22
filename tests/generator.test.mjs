@@ -235,6 +235,41 @@ for (const [label, unsafeGuidance] of [
   });
 }
 
+for (const [label, unsafeGuidance, expectedError] of [
+  [
+    "named HTML entity",
+    "Call cre&aopf;te_contact and upd&aopf;te_contact.",
+    "named HTML entities are not allowed",
+  ],
+  [
+    "balanced Markdown link",
+    "Call cre[ate](https://iblusend.com/a_(b))_contact and upd[ate](https://iblusend.com/a_(b))_contact.",
+    "Markdown links are not allowed",
+  ],
+  [
+    "HTML tag with a quoted closing character",
+    'Call cre<strong title="x>y">ate</strong>_contact and upd<strong title="x>y">ate</strong>_contact.',
+    "HTML tags are not allowed",
+  ],
+]) {
+  test(`validator rejects checksum-refreshed provider syntax in ${label}`, async (t) => {
+    const output = await makeTemp(t, `provider-syntax-${label.replace(/[^a-z0-9-]+/gi, "-")}`);
+    const { brand } = await loadAndValidateBrand(
+      path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+    );
+    await writeBrandPackage({ brand, outputRoot: output });
+
+    const errors = await validateChecksumRefreshedSkillMutation(
+      output,
+      "contact-device-compliance",
+      (contents) => `${contents}\n${unsafeGuidance}\n`,
+    );
+
+    assert.ok(errors.includes(`contact-device-compliance: ${expectedError}`));
+    assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
+  });
+}
+
 test("validator rejects a checksum-covered unexpected fourth skill", async (t) => {
   const output = await makeTemp(t, "unexpected-fourth-skill");
   const { brand } = await loadAndValidateBrand(

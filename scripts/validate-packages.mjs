@@ -246,6 +246,18 @@ function validateHeldBackToolText(contents, label, errors) {
   }
 }
 
+function validateProviderSyntax(contents, label, errors) {
+  if (/&[a-z][a-z0-9]+;/i.test(contents)) {
+    errors.push(`${label}: named HTML entities are not allowed`);
+  }
+  if (/!?\[[^\]]*\]\s*(?:\(|\[)/.test(contents)) {
+    errors.push(`${label}: Markdown links are not allowed`);
+  }
+  if (/<\/?[a-z][a-z0-9-]*(?:\s|\/?>)/i.test(contents)) {
+    errors.push(`${label}: HTML tags are not allowed`);
+  }
+}
+
 function validatePng(buffer, errors, label, minimumWidth, minimumHeight) {
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
   if (buffer.length < 33 || !buffer.subarray(0, 8).equals(signature)) {
@@ -358,7 +370,9 @@ async function validatePluginText(pluginRoot, errors) {
     const relative = path.relative(pluginRoot, absolute).split(path.sep).join("/");
     const contents = await readFile(absolute, "utf8");
     const topLevelSkill = relative.match(/^skills\/([^/]+)\/SKILL\.md$/)?.[1];
-    validateHeldBackToolText(contents, topLevelSkill ?? relative, errors);
+    const label = topLevelSkill ?? relative;
+    validateProviderSyntax(contents, label, errors);
+    validateHeldBackToolText(contents, label, errors);
     const markerPatterns = [
       /\[TODO:/i,
       /\bCHANGEME\b/i,
@@ -384,6 +398,11 @@ export async function validatePackageRoot(root) {
   const codexMarketplace = await readJson(codexMarketplacePath, errors, ".agents/plugins/marketplace.json");
   const claudeMarketplace = await readJson(claudeMarketplacePath, errors, ".claude-plugin/marketplace.json");
   if (codexMarketplace) {
+    validateProviderSyntax(
+      JSON.stringify(codexMarketplace),
+      ".agents/plugins/marketplace.json",
+      errors,
+    );
     validateHeldBackToolText(
       JSON.stringify(codexMarketplace),
       ".agents/plugins/marketplace.json",
@@ -391,6 +410,11 @@ export async function validatePackageRoot(root) {
     );
   }
   if (claudeMarketplace) {
+    validateProviderSyntax(
+      JSON.stringify(claudeMarketplace),
+      ".claude-plugin/marketplace.json",
+      errors,
+    );
     validateHeldBackToolText(
       JSON.stringify(claudeMarketplace),
       ".claude-plugin/marketplace.json",
