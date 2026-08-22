@@ -1,0 +1,70 @@
+{
+  "$schema": "./brand.schema.json",
+  "schemaVersion": 1,
+  "package": {
+    "slug": "iblusend",
+    "displayName": "iBluSend",
+    "version": "0.1.0",
+    "description": "Safely triage conversations, manage contacts, and send confirmed iMessages and SMS through one consented workspace.",
+    "longDescription": "Connect one iBluSend workspace to inspect conversations, contacts, devices, groups, delivery status, opt-out state, and bot status. Draft and send only after showing the exact destination and content for approval.",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "keywords": ["imessage", "sms", "messaging", "contacts", "inbox", "crm"]
+  },
+  "publisher": {
+    "name": "iBluSend",
+    "developerName": "iBluSend",
+    "email": "support@iblusend.com",
+    "url": "https://iblusend.com",
+    "repository": "https://github.com/ZachPulse/iblusend-plugins"
+  },
+  "legal": {
+    "homepage": "https://iblusend.com/developers",
+    "website": "https://iblusend.com",
+    "support": "https://iblusend.com/support",
+    "privacy": "https://iblusend.com/privacy",
+    "terms": "https://iblusend.com/terms",
+    "license": "MIT"
+  },
+  "mcp": {
+    "serverName": "iblusend",
+    "resourceUrl": "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public"
+  },
+  "branding": {
+    "primaryColor": "#3B82F6",
+    "accentColor": "#8B5CF6",
+    "monogram": "IB",
+    "composerIcon": { "kind": "generated", "label": "iBluSend composer icon" },
+    "lightLogo": { "kind": "generated", "label": "iBluSend light logo" },
+    "darkLogo": { "kind": "generated", "label": "iBluSend dark logo" },
+    "screenshots": [
+      { "kind": "generated", "label": "Inbox triage workflow" },
+      { "kind": "generated", "label": "Safe draft and send workflow" },
+      { "kind": "generated", "label": "Contact and compliance workflow" }
+    ]
+  },
+  "copy": {
+    "channelName": "iMessage or SMS",
+    "workspaceName": "iBluSend workspace",
+    "starterPrompts": [
+      "Triage my iBluSend inbox and flag conversations that need a reply.",
+      "Draft a reply for one contact, then wait for my approval before sending.",
+      "Check this contact's opt-out status and show available sending devices."
+    ]
+  },
+  "marketplaces": {
+    "codex": {
+      "name": "iblusend-official",
+      "displayName": "iBluSend Official",
+      "installation": "AVAILABLE",
+      "authentication": "ON_INSTALL"
+    },
+    "claude": {
+      "name": "iblusend-official",
+      "description": "Official iBluSend tools and guarded messaging workflows for one consented workspace."
+    }
+  },
+  "infrastructureAttribution": {
+    "allowedBrandReferences": []
+  }
+}

@@ -1,0 +1,24 @@
+name: Validate plugin packages
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run dependency-free package tests
+        run: npm test
+      - name: Run Claude's strict validator
+        run: npx --yes @anthropic-ai/claude-code@2.1.235 plugin validate plugins/iblusend --strict
+      - name: Validate Claude repository marketplace
+        run: npx --yes @anthropic-ai/claude-code@2.1.235 plugin validate . --strict

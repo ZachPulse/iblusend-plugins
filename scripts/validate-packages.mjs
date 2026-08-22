@@ -1,0 +1,383 @@
+#!/usr/bin/env node
+
+import { createHash } from "node:crypto";
+import { readdir, readFile } from "node:fs/promises";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
+const REQUIRED_SKILLS = [
+  "contact-device-compliance",
+  "inbox-triage",
+  "safe-draft-and-send",
+];
+const HELD_BACK_TOOLS = [
+  "mark_read",
+  "remove_reaction",
+  "send_reaction",
+  "send_typing_indicator",
+  "send_voice_memo",
+];
+const OPENAI_KEYS = new Set([
+  "author",
+  "description",
+  "homepage",
+  "keywords",
+  "license",
+  "mcpServers",
+  "name",
+  "repository",
+  "skills",
+  "version",
+  "interface",
+]);
+const OPENAI_INTERFACE_KEYS = new Set([
+  "brandColor",
+  "capabilities",
+  "category",
+  "composerIcon",
+  "defaultPrompt",
+  "developerName",
+  "displayName",
+  "logo",
+  "logoDark",
+  "longDescription",
+  "privacyPolicyURL",
+  "screenshots",
+  "shortDescription",
+  "termsOfServiceURL",
+  "websiteURL",
+]);
+const CLAUDE_KEYS = new Set([
+  "$schema",
+  "author",
+  "description",
+  "displayName",
+  "homepage",
+  "keywords",
+  "license",
+  "mcpServers",
+  "name",
+  "repository",
+  "skills",
+  "version",
+]);
+
+function parseArgs(argv) {
+  const options = { root: "." };
+  for (let index = 0; index < argv.length; index += 1) {
+    if (argv[index] !== "--root") throw new Error(`Unknown argument: ${argv[index]}`);
+    const value = argv[index + 1];
+    if (!value || value.startsWith("--")) throw new Error("--root requires a value");
+    options.root = value;
+    index += 1;
+  }
+  return options;
+}
+
+async function readJson(filePath, errors, label = filePath) {
+  try {
+    const value = JSON.parse(await readFile(filePath, "utf8"));
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      errors.push(`${label} must contain a JSON object`);
+      return null;
+    }
+    return value;
+  } catch (error) {
+    errors.push(`${label} is missing or invalid JSON: ${error.message}`);
+    return null;
+  }
+}
+
+function requireString(object, key, errors, label) {
+  if (typeof object?.[key] !== "string" || !object[key].trim()) {
+    errors.push(`${label}.${key} must be a non-empty string`);
+    return null;
+  }
+  return object[key];
+}
+
+function requireHttps(value, errors, label) {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "https:") throw new Error("not HTTPS");
+  } catch {
+    errors.push(`${label} must be an absolute HTTPS URL`);
+  }
+}
+
+function rejectUnknown(object, allowed, errors, label) {
+  for (const key of Object.keys(object ?? {})) {
+    if (!allowed.has(key)) errors.push(`${label}.${key} is not an accepted field`);
+  }
+}
+
+async function fileExists(filePath) {
+  try {
+    await readFile(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function collectFiles(root) {
+  const result = [];
+  async function walk(directory) {
+    const entries = await readdir(directory, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name === ".git" || entry.name === "node_modules" || entry.name === "dist") continue;
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) await walk(absolute);
+      else if (entry.isFile()) result.push(absolute);
+    }
+  }
+  await walk(path.resolve(root));
+  return result.sort();
+}
+
+function validatePng(buffer, errors, label, minimumWidth, minimumHeight) {
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  if (buffer.length < 33 || !buffer.subarray(0, 8).equals(signature)) {
+    errors.push(`${label} is not a valid PNG signature`);
+    return;
+  }
+  if (buffer.subarray(12, 16).toString("ascii") !== "IHDR") {
+    errors.push(`${label} has no PNG IHDR chunk`);
+    return;
+  }
+  const width = buffer.readUInt32BE(16);
+  const height = buffer.readUInt32BE(20);
+  if (width < minimumWidth || height < minimumHeight) {
+    errors.push(`${label} is ${width}x${height}; expected at least ${minimumWidth}x${minimumHeight}`);
+  }
+}
+
+async function validateSkill(pluginRoot, skillName, errors) {
+  const skillPath = path.join(pluginRoot, "skills", skillName, "SKILL.md");
+  let contents;
+  try {
+    contents = await readFile(skillPath, "utf8");
+  } catch {
+    errors.push(`missing skill: skills/${skillName}/SKILL.md`);
+    return;
+  }
+  if (!contents.startsWith("---\n")) errors.push(`${skillName}: YAML frontmatter must come first`);
+  const frontmatterEnd = contents.indexOf("\n---\n", 4);
+  if (frontmatterEnd < 0) errors.push(`${skillName}: YAML frontmatter is not closed`);
+  const frontmatter = contents.slice(4, frontmatterEnd < 0 ? contents.length : frontmatterEnd);
+  const name = frontmatter.match(/^name:\s*(.+)$/m)?.[1]?.trim();
+  const description = frontmatter.match(/^description:\s*(.+)$/m)?.[1]?.trim();
+  if (name !== skillName) errors.push(`${skillName}: frontmatter name must equal its directory`);
+  if (!description) errors.push(`${skillName}: frontmatter description is required`);
+  for (const heldBack of HELD_BACK_TOOLS) {
+    if (contents.includes(`\`${heldBack}\``)) errors.push(`${skillName}: held-back tool ${heldBack} is named as callable`);
+  }
+  if (/\b(bulk send|blast|bypass compliance|scrape contacts)\b/i.test(contents)) {
+    errors.push(`${skillName}: contains prohibited bulk or bypass language`);
+  }
+  if (skillName === "safe-draft-and-send") {
+    for (const phrase of ["explicit confirmation", "Call `send_message` once", "Never retry an ambiguous"]) {
+      if (!contents.includes(phrase)) errors.push(`${skillName}: missing safety phrase ${JSON.stringify(phrase)}`);
+    }
+  }
+}
+
+function validateManifestParity(codex, claude, errors) {
+  for (const key of ["name", "version", "description", "homepage", "repository", "license"]) {
+    if (codex[key] !== claude[key]) errors.push(`provider manifest mismatch: ${key}`);
+  }
+  if (JSON.stringify(codex.author) !== JSON.stringify(claude.author)) {
+    errors.push("provider manifest mismatch: author");
+  }
+  if (JSON.stringify(codex.keywords) !== JSON.stringify(claude.keywords)) {
+    errors.push("provider manifest mismatch: keywords");
+  }
+  if (codex.skills !== "./skills/" || claude.skills !== "./skills/") {
+    errors.push("both provider manifests must use ./skills/");
+  }
+  if (codex.mcpServers !== "./.mcp.json" || claude.mcpServers !== "./.mcp.json") {
+    errors.push("both provider manifests must use ./.mcp.json");
+  }
+}
+
+async function validateChecksums(pluginRoot, errors) {
+  const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");
+  let contents;
+  try {
+    contents = await readFile(checksumPath, "utf8");
+  } catch {
+    errors.push("missing CHECKSUMS.sha256");
+    return;
+  }
+  const expected = new Map();
+  for (const [index, line] of contents.trimEnd().split("\n").entries()) {
+    const match = line.match(/^([a-f0-9]{64})  (.+)$/);
+    if (!match) {
+      errors.push(`CHECKSUMS.sha256 line ${index + 1} is invalid`);
+      continue;
+    }
+    if (match[2].includes("..") || path.isAbsolute(match[2])) {
+      errors.push(`CHECKSUMS.sha256 path escapes package: ${match[2]}`);
+      continue;
+    }
+    expected.set(match[2], match[1]);
+  }
+  const files = await collectFiles(pluginRoot);
+  for (const absolute of files) {
+    const relative = path.relative(pluginRoot, absolute).split(path.sep).join("/");
+    if (relative === "CHECKSUMS.sha256") continue;
+    if (!expected.has(relative)) {
+      errors.push(`CHECKSUMS.sha256 does not cover ${relative}`);
+      continue;
+    }
+    const actual = createHash("sha256").update(await readFile(absolute)).digest("hex");
+    if (actual !== expected.get(relative)) errors.push(`checksum mismatch: ${relative}`);
+    expected.delete(relative);
+  }
+  for (const missing of expected.keys()) errors.push(`CHECKSUMS.sha256 names missing file: ${missing}`);
+}
+
+async function validatePluginText(pluginRoot, errors) {
+  const files = await collectFiles(pluginRoot);
+  for (const absolute of files) {
+    if (absolute.endsWith(".png")) continue;
+    const relative = path.relative(pluginRoot, absolute);
+    const contents = await readFile(absolute, "utf8");
+    const markerPatterns = [
+      /\[TODO:/i,
+      /\bCHANGEME\b/i,
+      /\bTBD\b/,
+      /https:\/\/example\.com/i,
+      /\/Users\/[A-Za-z0-9._-]+\//,
+      /[A-Z]:\\Users\\/i,
+      /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+      /\b(?:iblu|iblu_test|sk|ghp|pat)_[A-Za-z0-9_-]{12,}\b/,
+      /\bBearer\s+[A-Za-z0-9._~-]{12,}\b/i,
+    ];
+    for (const pattern of markerPatterns) {
+      if (pattern.test(contents)) errors.push(`${relative}: matches forbidden placeholder/secret pattern ${pattern}`);
+    }
+  }
+}
+
+export async function validatePackageRoot(root) {
+  const errors = [];
+  const absoluteRoot = path.resolve(root);
+  const codexMarketplacePath = path.join(absoluteRoot, ".agents", "plugins", "marketplace.json");
+  const claudeMarketplacePath = path.join(absoluteRoot, ".claude-plugin", "marketplace.json");
+  const codexMarketplace = await readJson(codexMarketplacePath, errors, ".agents/plugins/marketplace.json");
+  const claudeMarketplace = await readJson(claudeMarketplacePath, errors, ".claude-plugin/marketplace.json");
+  const codexEntry = codexMarketplace?.plugins?.[0];
+  const claudeEntry = claudeMarketplace?.plugins?.[0];
+  const slug = codexEntry?.name;
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug ?? "")) errors.push("Codex marketplace must contain one kebab-case plugin");
+  if (codexMarketplace?.plugins?.length !== 1) errors.push("Codex marketplace must contain exactly one plugin");
+  if (claudeMarketplace?.plugins?.length !== 1) errors.push("Claude marketplace must contain exactly one plugin");
+  if (claudeEntry?.name !== slug) errors.push("marketplace plugin names do not match");
+  if (codexEntry?.source?.source !== "local" || codexEntry?.source?.path !== `./plugins/${slug}`) {
+    errors.push("Codex marketplace source must be the local plugin path");
+  }
+  if (!codexEntry?.policy || !["AVAILABLE", "NOT_AVAILABLE", "INSTALLED_BY_DEFAULT"].includes(codexEntry.policy.installation)) {
+    errors.push("Codex marketplace installation policy is missing or invalid");
+  }
+  if (!codexEntry?.policy || !["ON_INSTALL", "ON_USE"].includes(codexEntry.policy.authentication)) {
+    errors.push("Codex marketplace authentication policy is missing or invalid");
+  }
+  if (!codexEntry?.category) errors.push("Codex marketplace category is required");
+  if (claudeEntry?.source !== `./plugins/${slug}`) errors.push("Claude marketplace source must be the local plugin path");
+
+  if (!slug) return errors;
+  const pluginRoot = path.join(absoluteRoot, "plugins", slug);
+  const codex = await readJson(path.join(pluginRoot, ".codex-plugin", "plugin.json"), errors, "OpenAI plugin manifest");
+  const claude = await readJson(path.join(pluginRoot, ".claude-plugin", "plugin.json"), errors, "Claude plugin manifest");
+  const mcp = await readJson(path.join(pluginRoot, ".mcp.json"), errors, "MCP manifest");
+  if (!codex || !claude || !mcp) return errors;
+
+  rejectUnknown(codex, OPENAI_KEYS, errors, "OpenAI plugin manifest");
+  rejectUnknown(codex.interface, OPENAI_INTERFACE_KEYS, errors, "OpenAI plugin manifest.interface");
+  rejectUnknown(claude, CLAUDE_KEYS, errors, "Claude plugin manifest");
+  validateManifestParity(codex, claude, errors);
+  if (codex.name !== slug || claude.name !== slug) errors.push("plugin directory and manifest names must match");
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-+][0-9A-Za-z.-]+)?$/.test(codex.version ?? "")) {
+    errors.push("plugin version must be semantic versioning");
+  }
+  for (const [label, object, keys] of [
+    ["OpenAI plugin manifest", codex, ["name", "version", "description", "homepage", "repository", "license"]],
+    ["Claude plugin manifest", claude, ["name", "version", "description", "displayName", "homepage", "repository", "license"]],
+  ]) {
+    keys.forEach((key) => requireString(object, key, errors, label));
+  }
+  [codex.homepage, codex.repository, codex.interface?.websiteURL, codex.interface?.privacyPolicyURL, codex.interface?.termsOfServiceURL]
+    .forEach((value, index) => requireHttps(value, errors, `OpenAI URL ${index + 1}`));
+  if (!Array.isArray(codex.interface?.defaultPrompt) || codex.interface.defaultPrompt.length < 1 || codex.interface.defaultPrompt.length > 3) {
+    errors.push("OpenAI defaultPrompt must contain one to three entries");
+  } else if (codex.interface.defaultPrompt.some((entry) => typeof entry !== "string" || entry.length > 128)) {
+    errors.push("OpenAI defaultPrompt entries must be strings no longer than 128 characters");
+  }
+  if (!Array.isArray(codex.interface?.capabilities) || !codex.interface.capabilities.length) {
+    errors.push("OpenAI capabilities must be a non-empty array");
+  }
+  if (!/^#[0-9A-F]{6}$/.test(codex.interface?.brandColor ?? "")) errors.push("OpenAI brandColor must be uppercase #RRGGBB");
+  if (!Array.isArray(codex.interface?.screenshots) || codex.interface.screenshots.length !== 3) {
+    errors.push("OpenAI manifest must contain exactly three screenshots");
+  }
+
+  const servers = mcp.mcpServers;
+  if (!servers || typeof servers !== "object" || Array.isArray(servers) || Object.keys(servers).length !== 1) {
+    errors.push("MCP manifest must contain exactly one server");
+  } else {
+    const [server] = Object.values(servers);
+    if (server?.type !== "http") errors.push("MCP server type must be http");
+    requireHttps(server?.url, errors, "MCP resource URL");
+    if (server?.url !== "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public") {
+      errors.push("MCP resource URL is not the approved public endpoint");
+    }
+    if (server?.headers || server?.env || server?.oauth?.clientSecret) {
+      errors.push("MCP manifest must not embed headers, environment secrets, or an OAuth client secret");
+    }
+  }
+
+  const appJson = path.join(pluginRoot, ".app.json");
+  if (await fileExists(appJson)) errors.push(".app.json must remain absent until OpenAI issues a real portal ID");
+  for (const skillName of REQUIRED_SKILLS) await validateSkill(pluginRoot, skillName, errors);
+
+  const assetRequirements = [
+    ["assets/icon.png", 128, 128],
+    ["assets/logo.png", 256, 128],
+    ["assets/logo-dark.png", 256, 128],
+    ["assets/screenshot-inbox-triage.png", 1000, 600],
+    ["assets/screenshot-safe-send.png", 1000, 600],
+    ["assets/screenshot-compliance.png", 1000, 600],
+  ];
+  for (const [relative, minimumWidth, minimumHeight] of assetRequirements) {
+    try {
+      validatePng(await readFile(path.join(pluginRoot, relative)), errors, relative, minimumWidth, minimumHeight);
+    } catch {
+      errors.push(`missing asset: ${relative}`);
+    }
+  }
+
+  if (codexEntry?.name !== codex.name || claudeEntry?.name !== claude.name) errors.push("catalog and manifest names differ");
+  if (claudeEntry?.version !== claude.version) errors.push("Claude catalog and manifest versions differ");
+  await validateChecksums(pluginRoot, errors);
+  await validatePluginText(pluginRoot, errors);
+  return errors;
+}
+
+async function main() {
+  const { root } = parseArgs(process.argv.slice(2));
+  const errors = await validatePackageRoot(root);
+  if (errors.length) {
+    process.stderr.write(`Package validation failed:\n${errors.map((error) => `- ${error}`).join("\n")}\n`);
+    process.exitCode = 1;
+    return;
+  }
+  process.stdout.write(`Package validation passed: ${path.resolve(root)}\n`);
+}
+
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+  main().catch((error) => {
+    process.stderr.write(`${error.message}\n`);
+    process.exitCode = 1;
+  });
+}
