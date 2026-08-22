@@ -252,6 +252,21 @@ for (const [label, unsafeGuidance, expectedError] of [
     "Markdown links are not allowed",
   ],
   [
+    "blockquote shortcut reference link",
+    "Call cre[ate]_contact and upd[ate]_contact.\n\n> [ate]: https://iblusend.com",
+    "Markdown links are not allowed",
+  ],
+  [
+    "nested blockquote shortcut reference link",
+    "Call cre[ate]_contact and upd[ate]_contact.\n\n>> [ate]: https://iblusend.com",
+    "Markdown links are not allowed",
+  ],
+  [
+    "list shortcut reference link",
+    "Call cre[ate]_contact and upd[ate]_contact.\n\n- [ate]: https://iblusend.com",
+    "Markdown links are not allowed",
+  ],
+  [
     "HTML tag with a quoted closing character",
     'Call cre<strong title="x>y">ate</strong>_contact and upd<strong title="x>y">ate</strong>_contact.',
     "HTML tags are not allowed",
