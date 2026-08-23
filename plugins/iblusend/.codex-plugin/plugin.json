@@ -1,6 +1,6 @@
 {
   "name": "iblusend",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
   "author": {
     "name": "iBluSend",

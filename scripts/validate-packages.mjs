@@ -67,7 +67,7 @@ const CLAUDE_KEYS = new Set([
   "version",
 ]);
 const ISSUED_OPENAI_APP_IDS = new Map([
-  ["iblusend", "asdk_app_6a8904c0880c8191bbd17d77013abc1f"],
+  ["iblusend", "asdk_app_6a8a543370988191833212380a71b2b9"],
 ]);
 const SAFE_SEND_SKILL_MISMATCH_ERROR =
   "safe-draft-and-send: file must exactly match the canonical artifact";

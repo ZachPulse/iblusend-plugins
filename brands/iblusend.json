@@ -4,7 +4,7 @@
   "package": {
     "slug": "iblusend",
     "displayName": "iBluSend",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
     "longDescription": "Connect one iBluSend workspace to inspect conversations, contacts, devices, groups, delivery status, opt-out state, and bot status. Draft and send only after showing the exact destination and content for approval.",
     "category": "Productivity",
@@ -31,7 +31,7 @@
     "resourceUrl": "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public"
   },
   "openai": {
-    "appId": "asdk_app_6a8904c0880c8191bbd17d77013abc1f"
+    "appId": "asdk_app_6a8a543370988191833212380a71b2b9"
   },
   "branding": {
     "primaryColor": "#3B82F6",

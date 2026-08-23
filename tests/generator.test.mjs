@@ -581,7 +581,7 @@ test("brand schema rejects an unsafe slug and non-HTTPS resource", async () => {
   const brand = JSON.parse(await readFile(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"), "utf8"));
   brand.package.slug = "../escape";
   brand.mcp.resourceUrl = "http://localhost/mcp";
-  brand.openai.appId = "plugin_asdk_app_6a8904c0880c8191bbd17d77013abc1f";
+  brand.openai.appId = "plugin_asdk_app_6a8a543370988191833212380a71b2b9";
   const errors = validateAgainstSchema(brand, schema);
   assert.ok(errors.some((error) => error.includes("package.slug")));
   assert.ok(errors.some((error) => error.includes("mcp.resourceUrl")));
@@ -629,7 +629,7 @@ test("generator refuses a symlinked OpenAI app mapping", async (t) => {
   );
 });
 
-test("validator pins the issued iBluSend app id and rejects unknown app fields", async (t) => {
+test("validator rejects the previous iBluSend app id and unknown app fields", async (t) => {
   const output = await makeTemp(t, "invalid-issued-app");
   const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
   await writeBrandPackage({ brand, outputRoot: output });
@@ -637,7 +637,7 @@ test("validator pins the issued iBluSend app id and rejects unknown app fields",
   const pluginRoot = path.join(output, "plugins", "iblusend");
   const appPath = path.join(pluginRoot, ".app.json");
   const app = JSON.parse(await readFile(appPath, "utf8"));
-  app.apps.iblusend.id = "asdk_app_00000000000000000000000000000000";
+  app.apps.iblusend.id = "asdk_app_6a8904c0880c8191bbd17d77013abc1f";
   app.unexpected = true;
   const appContents = `${JSON.stringify(app, null, 2)}\n`;
   await writeFile(appPath, appContents);
