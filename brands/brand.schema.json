@@ -113,14 +113,14 @@
         "primaryColor": { "$ref": "#/$defs/hexColor" },
         "accentColor": { "$ref": "#/$defs/hexColor" },
         "monogram": { "type": "string", "pattern": "^[A-Za-z0-9]{1,3}$" },
-        "composerIcon": { "$ref": "#/$defs/generatedAsset" },
-        "lightLogo": { "$ref": "#/$defs/generatedAsset" },
-        "darkLogo": { "$ref": "#/$defs/generatedAsset" },
+        "composerIcon": { "$ref": "#/$defs/asset" },
+        "lightLogo": { "$ref": "#/$defs/asset" },
+        "darkLogo": { "$ref": "#/$defs/asset" },
         "screenshots": {
           "type": "array",
           "minItems": 3,
           "maxItems": 3,
-          "items": { "$ref": "#/$defs/generatedAsset" }
+          "items": { "$ref": "#/$defs/asset" }
         }
       }
     },
@@ -182,13 +182,19 @@
   "$defs": {
     "httpsUrl": { "type": "string", "pattern": "^https://[^\\s]+$" },
     "hexColor": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
-    "generatedAsset": {
+    "asset": {
       "type": "object",
       "additionalProperties": false,
       "required": ["kind", "label"],
       "properties": {
-        "kind": { "const": "generated" },
-        "label": { "type": "string", "minLength": 1, "maxLength": 64 }
+        "kind": { "enum": ["generated", "source"] },
+        "label": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "path": {
+          "type": "string",
+          "pattern": "^\\./[A-Za-z0-9._/-]+\\.png$",
+          "maxLength": 256
+        },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
       }
     }
   }

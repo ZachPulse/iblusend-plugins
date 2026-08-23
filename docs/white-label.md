@@ -13,7 +13,7 @@ Start from `brands/imessage-sender.example.json` and validate fields against
 - publisher name, email, website, and repository;
 - support, privacy, terms, and homepage URLs;
 - remote MCP server name and exact HTTPS resource;
-- brand colors, monogram, generated light/dark logos, composer icon, and three screenshots;
+- brand colors, monogram, light/dark logos, composer icon, and three screenshots;
 - starter prompts and workspace/channel wording; and
 - both marketplace identities and install policy.
 
@@ -23,6 +23,13 @@ developer-mode registration. Store the canonical `asdk_app_...` runtime identifi
 
 All values must be final and authorized. Do not put a customer name, private repository URL,
 credential, tenant identifier, phone number, or private legal document into the public repository.
+
+Each visual asset may use `kind: "generated"`, which produces the deterministic monogram artwork,
+or `kind: "source"`, which copies an authorized PNG byte for byte. Source paths must begin with
+`./`, stay inside the brand document's directory, and name a regular PNG file rather than a
+symlink. Keep each source file at or below 10 MiB and pin it with its lowercase SHA-256 digest.
+Generation stops if the file is missing, escapes the brand directory, or no longer matches that
+digest.
 
 ## Generate and validate
 
@@ -36,8 +43,9 @@ node scripts/validate-packages.mjs --root dist/imessage-sender
 ```
 
 The output includes both marketplace catalogs, both provider manifests, one `.mcp.json`, all three
-skills, six PNG assets, a submission checklist, and SHA-256 checksums. Generation has no timestamp
-and is deterministic for the same source document and generator version.
+skills, six PNG assets, a submission checklist, and SHA-256 checksums. Source artwork is copied
+without resizing or recompression. Generation has no timestamp and is deterministic for the same
+brand document, source bytes, and generator version.
 
 Run the same command twice to separate clean directories and compare their trees before releasing
 a generator change. The automated generator test performs this check for the two reference brands.

@@ -28,6 +28,14 @@ Prepare the server name, resource URL, tagline, descriptions, use cases, transpo
 read/write summary, category, tool list, annotations, documentation, support, privacy policy, test
 account instructions, tested Claude surfaces, and final logo.
 
+Use the canonical app icon for Anthropic's server-logo field because the connector card prints the
+`iBluSend` name beside it. Prefer the public SVG at
+`https://iblusend.com/brand/iblusend-brand-kit/app-icons/iblusend-app.svg`; if the form requires a
+PNG upload, use `brands/assets/iblusend/composer-icon.png` from this repository. Its expected
+SHA-256 is `4f549fafdf51128f5f02f0df840abee603428c42d79e4602f1dd987c445ed9b4`.
+Verify the actual directory card on both light and dark Claude surfaces before approving Gate C,
+and confirm that Anthropic's favicon check resolves the branded iBluSend site icon.
+
 This v1 does not use MCP Apps or `ui/open-link`, so it should not claim interactive UI or request
 an allowed-link list. If either capability is added later, reassess screenshots and URI ownership
 before updating the submission.

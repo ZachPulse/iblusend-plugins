@@ -17,6 +17,11 @@ import {
 } from "../scripts/validate-packages.mjs";
 
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const IBLUSEND_SOURCE_ASSETS = [
+  ["composerIcon", "assets/icon.png"],
+  ["lightLogo", "assets/logo.png"],
+  ["darkLogo", "assets/logo-dark.png"],
+];
 
 async function makeTemp(t, label) {
   const directory = await mkdtemp(path.join(os.tmpdir(), `iblusend-${label}-`));
@@ -34,6 +39,25 @@ async function digestTree(root) {
     ]);
   }
   return entries;
+}
+
+async function makeSourceBrandFixture(t, mutate = () => {}) {
+  const directory = await makeTemp(t, "source-brand");
+  const brand = JSON.parse(
+    await readFile(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"), "utf8"),
+  );
+  brand.$schema = path.join(REPOSITORY_ROOT, "brands", "brand.schema.json");
+  for (const [assetKey] of IBLUSEND_SOURCE_ASSETS) {
+    const asset = brand.branding[assetKey];
+    const source = path.resolve(REPOSITORY_ROOT, "brands", asset.path);
+    const target = path.resolve(directory, asset.path);
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, await readFile(source));
+  }
+  await mutate({ brand, directory });
+  const brandPath = path.join(directory, "brand.json");
+  await writeFile(brandPath, `${JSON.stringify(brand, null, 2)}\n`);
+  return { brand, brandPath, directory };
 }
 
 async function validateChecksumRefreshedSafeSendMutation(output, mutate) {
@@ -92,6 +116,73 @@ for (const [label, brandFile] of [
     await writeBrandPackage({ brand, outputRoot: first, check: true });
   });
 }
+
+test("iBluSend generation copies hash-pinned brand-kit assets byte for byte", async (t) => {
+  const output = await makeTemp(t, "canonical-brand-assets");
+  const { brand, sourceAssets } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+  );
+  await writeBrandPackage({ brand, sourceAssets, outputRoot: output });
+
+  for (const [assetKey, outputPath] of IBLUSEND_SOURCE_ASSETS) {
+    const asset = brand.branding[assetKey];
+    const sourceContents = await readFile(path.resolve(REPOSITORY_ROOT, "brands", asset.path));
+    const outputContents = await readFile(path.join(output, "plugins", "iblusend", outputPath));
+    assert.deepEqual(outputContents, sourceContents);
+    assert.equal(createHash("sha256").update(outputContents).digest("hex"), asset.sha256);
+  }
+});
+
+test("brand loader rejects source artwork whose pinned digest has drifted", async (t) => {
+  const { brandPath } = await makeSourceBrandFixture(t, ({ brand: fixtureBrand }) => {
+    fixtureBrand.branding.composerIcon.sha256 = "0".repeat(64);
+  });
+  await assert.rejects(
+    loadAndValidateBrand(brandPath),
+    /branding\.composerIcon: source asset SHA-256 does not match the brand document/,
+  );
+});
+
+test("brand loader rejects source artwork that escapes the brand directory", async (t) => {
+  const { brandPath } = await makeSourceBrandFixture(t, ({ brand }) => {
+    brand.branding.composerIcon.path = "./../outside.png";
+  });
+  await assert.rejects(
+    loadAndValidateBrand(brandPath),
+    /branding\.composerIcon: source path escapes the brand directory/,
+  );
+});
+
+test("brand loader rejects symlinked source artwork", async (t) => {
+  const { brandPath } = await makeSourceBrandFixture(
+    t,
+    async ({ brand: fixtureBrand, directory: fixtureDirectory }) => {
+      const assetPath = path.resolve(
+        fixtureDirectory,
+        fixtureBrand.branding.composerIcon.path,
+      );
+      await rm(assetPath);
+      await symlink(
+        path.join(REPOSITORY_ROOT, "brands", "assets", "iblusend", "composer-icon.png"),
+        assetPath,
+      );
+    },
+  );
+  await assert.rejects(
+    loadAndValidateBrand(brandPath),
+    /branding\.composerIcon: source asset must be a regular file, not a symlink/,
+  );
+});
+
+test("brand loader rejects generated artwork with source-only fields", async (t) => {
+  const { brandPath } = await makeSourceBrandFixture(t, ({ brand }) => {
+    brand.branding.composerIcon.kind = "generated";
+  });
+  await assert.rejects(
+    loadAndValidateBrand(brandPath),
+    /branding\.composerIcon: generated assets must not define path or sha256/,
+  );
+});
 
 test("both brands generate byte-identical safe-send skills", async (t) => {
   const iblusendOutput = await makeTemp(t, "iblusend-safe-send-parity");
