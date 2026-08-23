@@ -5,7 +5,10 @@ import { lstat, mkdir, readdir, readFile, realpath, writeFile } from "node:fs/pr
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { renderSafeSendSkill } from "./safe-send-body.mjs";
+import {
+  renderSafeSendSkill,
+  renderStopControlSection,
+} from "./safe-send-body.mjs";
 
 const GENERATOR_VERSION = 3;
 const MAX_SOURCE_ASSET_BYTES = 10 * 1024 * 1024;
@@ -703,7 +706,7 @@ workspace.
 - Device state is a reported snapshot. Offline/online does not guarantee that a future message will
   fail/succeed.
 
-## Tool selection
+${renderStopControlSection(["opt_out", "set_bot_status"])}## Tool selection
 
 - \`list_contacts\` finds an existing record.
 - \`list_devices\` reports lines and current capacity/state for the consented workspace.

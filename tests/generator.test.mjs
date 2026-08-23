@@ -212,6 +212,74 @@ test("both brands generate byte-identical safe-send skills", async (t) => {
   assert.deepEqual(iblusendSkill, imessageSenderSkill);
 });
 
+test("generated write workflows invalidate stale approval after stop or cancellation", async (t) => {
+  const output = await makeTemp(t, "stop-control");
+  const { brand } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+  );
+  await writeBrandPackage({ brand, outputRoot: output });
+
+  const skills = new Map([
+    [
+      "safe-draft-and-send",
+      await readFile(
+        path.join(output, "plugins", "iblusend", "skills", "safe-draft-and-send", "SKILL.md"),
+        "utf8",
+      ),
+    ],
+    [
+      "contact-device-compliance",
+      await readFile(
+        path.join(
+          output,
+          "plugins",
+          "iblusend",
+          "skills",
+          "contact-device-compliance",
+          "SKILL.md",
+        ),
+        "utf8",
+      ),
+    ],
+  ]);
+
+  for (const [skillName, contents] of skills) {
+    assert.match(contents, /## Stop and cancellation control/);
+    assert.match(contents, /newest user instruction is authoritative/);
+    assert.match(contents, /stop, cancel, hold, pause, do not send/);
+    assert.match(contents, /invalidates every earlier preview and confirmation/);
+    assert.match(contents, /fresh explicit confirmation in a later user turn/);
+    assert.match(contents, /do not claim that it was cancelled/);
+    assert.match(contents, /provider or host rejects or closes its confirmation/);
+    if (skillName === "safe-draft-and-send") {
+      assert.match(contents, /Do not call `send_message` for the cancelled action/);
+    } else {
+      assert.match(contents, /Do not call `opt_out` or `set_bot_status` for the cancelled action/);
+    }
+  }
+});
+
+test("validator rejects a checksum-refreshed contact workflow with weakened stop control", async (t) => {
+  const output = await makeTemp(t, "weakened-contact-stop-control");
+  const { brand } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+  );
+  await writeBrandPackage({ brand, outputRoot: output });
+
+  const errors = await validateChecksumRefreshedSkillMutation(
+    output,
+    "contact-device-compliance",
+    (contents) => contents.replace(
+      "Cancellation invalidates every earlier preview and confirmation.",
+      "Cancellation may preserve an earlier confirmation.",
+    ),
+  );
+  assert.ok(errors.includes(
+    "contact-device-compliance: stop/cancellation boundary must exactly match the canonical artifact",
+  ));
+  assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
+});
+
 test("check mode detects a stale generated file", async (t) => {
   const output = await makeTemp(t, "stale");
   const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));

@@ -5,7 +5,10 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { renderSafeSendSkill } from "./safe-send-body.mjs";
+import {
+  renderSafeSendSkill,
+  renderStopControlSection,
+} from "./safe-send-body.mjs";
 
 const REQUIRED_SKILLS = [
   "contact-device-compliance",
@@ -71,6 +74,8 @@ const ISSUED_OPENAI_APP_IDS = new Map([
 ]);
 const SAFE_SEND_SKILL_MISMATCH_ERROR =
   "safe-draft-and-send: file must exactly match the canonical artifact";
+const CONTACT_STOP_CONTROL_MISMATCH_ERROR =
+  "contact-device-compliance: stop/cancellation boundary must exactly match the canonical artifact";
 
 function parseArgs(argv) {
   const options = { root: "." };
@@ -293,6 +298,12 @@ async function validateSkill(pluginRoot, skillName, errors) {
   if (skillName === "safe-draft-and-send") {
     if (contents !== renderSafeSendSkill()) errors.push(SAFE_SEND_SKILL_MISMATCH_ERROR);
     return;
+  }
+  if (
+    skillName === "contact-device-compliance" &&
+    !contents.includes(renderStopControlSection(["opt_out", "set_bot_status"]))
+  ) {
+    errors.push(CONTACT_STOP_CONTROL_MISMATCH_ERROR);
   }
   let frontmatter = "";
   if (!contents.startsWith("---\n")) {

@@ -25,6 +25,22 @@ summarize, or prepare is not permission to send.
   a `group_chat_id`, stop and explain that this connection cannot send there.
 - Never call `send_message` with `group_chat_id`.
 
+## Stop and cancellation control
+
+- The newest user instruction is authoritative. If, before a write tool starts, the user says
+  stop, cancel, hold, pause, do not send, changes the request, or otherwise withdraws approval,
+  cancel the pending action immediately.
+- Cancellation invalidates every earlier preview and confirmation.
+- Do not call `send_message` for the cancelled action, even if an earlier message approved it.
+- If the provider or host rejects or closes its confirmation, treat that as cancellation too.
+- Silence, elapsed time, or approval for a different payload never restores authorization.
+- To resume or act on a changed request, rebuild the exact preview from current state and obtain
+  fresh explicit confirmation in a later user turn.
+- After a pre-call cancellation, acknowledge that no write ran and stop this workflow unless the
+  newest instruction explicitly replaces it with read-only work.
+- If a write tool may already have started, do not claim that it was cancelled. Check status or
+  current state, report the facts, and never retry the write automatically.
+
 ## Public-v1 limits
 
 - One-to-one: text, supported media, or a supported effect.

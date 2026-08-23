@@ -1,6 +1,6 @@
 {
   "name": "iblusend-plugins",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "Official iBluSend plugin packages and white-label generator for OpenAI and Claude.",
   "type": "module",

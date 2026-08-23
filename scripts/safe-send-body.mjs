@@ -1,3 +1,24 @@
+export function renderStopControlSection(writeTools) {
+  const toolList = writeTools.map((toolName) => `\`${toolName}\``).join(" or ");
+  return `## Stop and cancellation control
+
+- The newest user instruction is authoritative. If, before a write tool starts, the user says
+  stop, cancel, hold, pause, do not send, changes the request, or otherwise withdraws approval,
+  cancel the pending action immediately.
+- Cancellation invalidates every earlier preview and confirmation.
+- Do not call ${toolList} for the cancelled action, even if an earlier message approved it.
+- If the provider or host rejects or closes its confirmation, treat that as cancellation too.
+- Silence, elapsed time, or approval for a different payload never restores authorization.
+- To resume or act on a changed request, rebuild the exact preview from current state and obtain
+  fresh explicit confirmation in a later user turn.
+- After a pre-call cancellation, acknowledge that no write ran and stop this workflow unless the
+  newest instruction explicitly replaces it with read-only work.
+- If a write tool may already have started, do not claim that it was cancelled. Check status or
+  current state, report the facts, and never retry the write automatically.
+
+`;
+}
+
 const SAFE_SEND_SKILL = `---
 name: safe-draft-and-send
 description: "Draft one message, show its exact destination and content, require confirmation, send once, and check status."
@@ -25,7 +46,7 @@ summarize, or prepare is not permission to send.
   a \`group_chat_id\`, stop and explain that this connection cannot send there.
 - Never call \`send_message\` with \`group_chat_id\`.
 
-## Public-v1 limits
+${renderStopControlSection(["send_message"])}## Public-v1 limits
 
 - One-to-one: text, supported media, or a supported effect.
 - Group conversations remain available to read, but every group-send target is unavailable.
