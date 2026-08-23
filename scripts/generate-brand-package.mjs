@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { renderSafeSendSkill } from "./safe-send-body.mjs";
 
-const GENERATOR_VERSION = 2;
+const GENERATOR_VERSION = 3;
+const MAX_SOURCE_ASSET_BYTES = 10 * 1024 * 1024;
+const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+const LOADED_SOURCE_ASSETS = new WeakMap();
 const SCREENSHOTS = [
   ["screenshot-inbox-triage.png", "INBOX TRIAGE", "READ ONLY"],
   ["screenshot-safe-send.png", "SAFE DRAFT AND SEND", "APPROVAL REQUIRED"],
@@ -133,6 +136,89 @@ export function validateAgainstSchema(value, schema, rootSchema = schema, locati
   return errors;
 }
 
+function brandAssetSpecs(brand) {
+  return [
+    ["branding.composerIcon", brand.branding.composerIcon],
+    ["branding.lightLogo", brand.branding.lightLogo],
+    ["branding.darkLogo", brand.branding.darkLogo],
+    ...brand.branding.screenshots.map((asset, index) => [`branding.screenshots[${index}]`, asset]),
+  ];
+}
+
+function pathIsInside(root, candidate) {
+  const relative = path.relative(root, candidate);
+  return relative !== ""
+    && relative !== ".."
+    && !relative.startsWith(`..${path.sep}`)
+    && !path.isAbsolute(relative);
+}
+
+async function loadBrandSourceAssets(brand, brandDirectory) {
+  const errors = [];
+  const sourceAssets = new Map();
+  const resolvedBrandDirectory = path.resolve(brandDirectory);
+  const realBrandDirectory = await realpath(resolvedBrandDirectory);
+
+  for (const [location, asset] of brandAssetSpecs(brand)) {
+    if (asset.kind === "generated") {
+      if (Object.hasOwn(asset, "path") || Object.hasOwn(asset, "sha256")) {
+        errors.push(`${location}: generated assets must not define path or sha256`);
+      }
+      continue;
+    }
+
+    if (typeof asset.path !== "string" || typeof asset.sha256 !== "string") {
+      errors.push(`${location}: source assets require path and sha256`);
+      continue;
+    }
+
+    const target = path.resolve(resolvedBrandDirectory, asset.path);
+    if (!pathIsInside(resolvedBrandDirectory, target)) {
+      errors.push(`${location}: source path escapes the brand directory`);
+      continue;
+    }
+
+    let fileInfo;
+    try {
+      fileInfo = await lstat(target);
+    } catch (error) {
+      errors.push(`${location}: source asset cannot be read: ${error.message}`);
+      continue;
+    }
+    if (fileInfo.isSymbolicLink() || !fileInfo.isFile()) {
+      errors.push(`${location}: source asset must be a regular file, not a symlink`);
+      continue;
+    }
+    if (fileInfo.size > MAX_SOURCE_ASSET_BYTES) {
+      errors.push(`${location}: source asset exceeds the 10 MiB limit`);
+      continue;
+    }
+
+    const realTarget = await realpath(target);
+    if (!pathIsInside(realBrandDirectory, realTarget)) {
+      errors.push(`${location}: source path resolves outside the brand directory`);
+      continue;
+    }
+
+    const contents = await readFile(realTarget);
+    if (contents.length < PNG_SIGNATURE.length || !contents.subarray(0, 8).equals(PNG_SIGNATURE)) {
+      errors.push(`${location}: source asset must be a PNG file`);
+      continue;
+    }
+    const digest = createHash("sha256").update(contents).digest("hex");
+    if (digest !== asset.sha256) {
+      errors.push(`${location}: source asset SHA-256 does not match the brand document`);
+      continue;
+    }
+    sourceAssets.set(asset.path, contents);
+  }
+
+  if (errors.length) {
+    throw new Error(`Brand asset validation failed:\n${errors.map((error) => `- ${error}`).join("\n")}`);
+  }
+  return sourceAssets;
+}
+
 export async function loadAndValidateBrand(brandPath) {
   const absoluteBrandPath = path.resolve(brandPath);
   const brand = JSON.parse(await readFile(absoluteBrandPath, "utf8"));
@@ -142,7 +228,9 @@ export async function loadAndValidateBrand(brandPath) {
   if (errors.length) {
     throw new Error(`Brand validation failed:\n${errors.map((error) => `- ${error}`).join("\n")}`);
   }
-  return { brand, schemaPath };
+  const sourceAssets = await loadBrandSourceAssets(brand, path.dirname(absoluteBrandPath));
+  LOADED_SOURCE_ASSETS.set(brand, sourceAssets);
+  return { brand, schemaPath, sourceAssets };
 }
 
 function hexToRgba(hex, alpha = 255) {
@@ -476,6 +564,19 @@ function makeLogo(brand, dark) {
   const scale = fitTextScale(name, 480, 10);
   canvas.drawText(name, 256, Math.floor((256 - 7 * scale) / 2), scale, textColor);
   return encodePng(canvas);
+}
+
+function renderAsset(asset, sourceAssets, makeGeneratedAsset) {
+  if (asset.kind === "generated") return makeGeneratedAsset();
+  const contents = sourceAssets.get(asset.path);
+  if (!contents) {
+    throw new Error(`Source asset was not loaded and validated: ${asset.path}`);
+  }
+  const digest = createHash("sha256").update(contents).digest("hex");
+  if (digest !== asset.sha256) {
+    throw new Error(`Source asset SHA-256 changed after validation: ${asset.path}`);
+  }
+  return Buffer.from(contents);
 }
 
 function makeScreenshot(brand, title, badge, index) {
@@ -826,7 +927,10 @@ function checksumFile(files, pluginPrefix) {
     .join("\n") + "\n";
 }
 
-export function renderBrandPackage(brand) {
+export function renderBrandPackage(
+  brand,
+  sourceAssets = LOADED_SOURCE_ASSETS.get(brand) ?? new Map(),
+) {
   const files = new Map();
   const slug = brand.package.slug;
   const pluginPrefix = `plugins/${slug}`;
@@ -845,20 +949,38 @@ export function renderBrandPackage(brand) {
   addText(`${pluginPrefix}/skills/inbox-triage/SKILL.md`, inboxTriageSkill(brand));
   addText(`${pluginPrefix}/skills/safe-draft-and-send/SKILL.md`, renderSafeSendSkill());
   addText(`${pluginPrefix}/skills/contact-device-compliance/SKILL.md`, contactComplianceSkill(brand));
-  files.set(`${pluginPrefix}/assets/icon.png`, makeIcon(brand));
-  files.set(`${pluginPrefix}/assets/logo.png`, makeLogo(brand, false));
-  files.set(`${pluginPrefix}/assets/logo-dark.png`, makeLogo(brand, true));
+  files.set(
+    `${pluginPrefix}/assets/icon.png`,
+    renderAsset(brand.branding.composerIcon, sourceAssets, () => makeIcon(brand)),
+  );
+  files.set(
+    `${pluginPrefix}/assets/logo.png`,
+    renderAsset(brand.branding.lightLogo, sourceAssets, () => makeLogo(brand, false)),
+  );
+  files.set(
+    `${pluginPrefix}/assets/logo-dark.png`,
+    renderAsset(brand.branding.darkLogo, sourceAssets, () => makeLogo(brand, true)),
+  );
   SCREENSHOTS.forEach(([fileName, title, badge], index) => {
-    files.set(`${pluginPrefix}/assets/${fileName}`, makeScreenshot(brand, title, badge, index));
+    files.set(
+      `${pluginPrefix}/assets/${fileName}`,
+      renderAsset(
+        brand.branding.screenshots[index],
+        sourceAssets,
+        () => makeScreenshot(brand, title, badge, index),
+      ),
+    );
   });
   addText(`${pluginPrefix}/CHECKSUMS.sha256`, checksumFile(files, pluginPrefix));
   return files;
 }
 
 async function assertOutputPath(outputRoot, relativePath) {
-  const target = path.resolve(outputRoot, relativePath);
-  const prefix = `${path.resolve(outputRoot)}${path.sep}`;
-  if (!target.startsWith(prefix)) throw new Error(`Generated path escapes output root: ${relativePath}`);
+  const resolvedRoot = path.resolve(outputRoot);
+  const target = path.resolve(resolvedRoot, relativePath);
+  if (!pathIsInside(resolvedRoot, target)) {
+    throw new Error(`Generated path escapes output root: ${relativePath}`);
+  }
   return target;
 }
 
@@ -891,11 +1013,15 @@ async function findExistingAppManifests(outputRoot) {
   return manifests.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
 }
 
-export async function writeBrandPackage({ brand, outputRoot, check = false }) {
+export async function writeBrandPackage({
+  brand,
+  sourceAssets = LOADED_SOURCE_ASSETS.get(brand) ?? new Map(),
+  outputRoot,
+  check = false,
+}) {
   const resolvedRoot = path.resolve(outputRoot);
-  const files = renderBrandPackage(brand);
   const expectedAppManifests = new Set(
-    [...files.keys()].filter((relativePath) => relativePath.startsWith("plugins/") && relativePath.endsWith("/.app.json")),
+    brand.openai ? [`plugins/${brand.package.slug}/.app.json`] : [],
   );
   const unexpectedAppManifests = (await findExistingAppManifests(resolvedRoot))
     .filter(({ isRegularFile, relativePath }) => !isRegularFile || !expectedAppManifests.has(relativePath))
@@ -907,6 +1033,7 @@ export async function writeBrandPackage({ brand, outputRoot, check = false }) {
         .join("\n")}`,
     );
   }
+  const files = renderBrandPackage(brand, sourceAssets);
   const stale = [];
   for (const [relativePath, contents] of files) {
     const target = await assertOutputPath(resolvedRoot, relativePath);
@@ -930,9 +1057,10 @@ export async function writeBrandPackage({ brand, outputRoot, check = false }) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const { brand } = await loadAndValidateBrand(options.brand);
+  const { brand, sourceAssets } = await loadAndValidateBrand(options.brand);
   const result = await writeBrandPackage({
     brand,
+    sourceAssets,
     outputRoot: options.output,
     check: options.check,
   });

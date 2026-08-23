@@ -4,7 +4,7 @@
   "package": {
     "slug": "iblusend",
     "displayName": "iBluSend",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
     "longDescription": "Connect one iBluSend workspace to inspect conversations, contacts, devices, groups, delivery status, opt-out state, and bot status. Draft and send only after showing the exact destination and content for approval.",
     "category": "Productivity",
@@ -34,12 +34,27 @@
     "appId": "asdk_app_6a8a543370988191833212380a71b2b9"
   },
   "branding": {
-    "primaryColor": "#3B82F6",
-    "accentColor": "#8B5CF6",
+    "primaryColor": "#968EF6",
+    "accentColor": "#4C79FF",
     "monogram": "IB",
-    "composerIcon": { "kind": "generated", "label": "iBluSend composer icon" },
-    "lightLogo": { "kind": "generated", "label": "iBluSend light logo" },
-    "darkLogo": { "kind": "generated", "label": "iBluSend dark logo" },
+    "composerIcon": {
+      "kind": "source",
+      "label": "iBluSend brand kit 1.5.1 app icon",
+      "path": "./assets/iblusend/composer-icon.png",
+      "sha256": "4f549fafdf51128f5f02f0df840abee603428c42d79e4602f1dd987c445ed9b4"
+    },
+    "lightLogo": {
+      "kind": "source",
+      "label": "iBluSend brand kit 1.5.1 light lockup",
+      "path": "./assets/iblusend/logo-light.png",
+      "sha256": "82bccaf49b2a6bdb98da95613cd03f831c603ffe9403c56203396a62ddfa77b4"
+    },
+    "darkLogo": {
+      "kind": "source",
+      "label": "iBluSend brand kit 1.5.1 dark lockup",
+      "path": "./assets/iblusend/logo-dark.png",
+      "sha256": "32a3ac1ee0b0a6cc1cef6f52fdc3dc108b534692211bfaecfba8f21e341db144"
+    },
     "screenshots": [
       { "kind": "generated", "label": "Inbox triage workflow" },
       { "kind": "generated", "label": "Safe draft and send workflow" },

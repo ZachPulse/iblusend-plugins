@@ -1,6 +1,6 @@
 {
   "name": "iblusend",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
   "author": {
     "name": "iBluSend",
@@ -40,7 +40,7 @@
       "Draft a reply for one contact, then wait for my approval before sending.",
       "Check this contact's opt-out status and show available sending devices."
     ],
-    "brandColor": "#3B82F6",
+    "brandColor": "#968EF6",
     "composerIcon": "./assets/icon.png",
     "logo": "./assets/logo.png",
     "logoDark": "./assets/logo-dark.png",

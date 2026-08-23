@@ -36,6 +36,14 @@ point at the same URL.
   Directory.
 - A clean-machine install from the public repository succeeds in Claude Code and Cowork.
 
+## Brand assets
+
+The shared package carries the same hash-pinned iBluSend app icon and light/dark lockups used by
+the Codex package. Claude Code's current plugin and marketplace manifest schemas do not define an
+icon or logo property, so do not add an unsupported field to make a local card appear branded.
+Use the Claude submission surface for listing artwork when it offers that control, and keep the
+bundled assets ready for hosts that support them.
+
 ## Submit
 
 Use Anthropic's in-app plugin submission form with the public GitHub repository or a complete zip
