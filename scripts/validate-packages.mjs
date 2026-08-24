@@ -72,6 +72,18 @@ const CLAUDE_KEYS = new Set([
 const ISSUED_OPENAI_APP_IDS = new Map([
   ["iblusend", "asdk_app_6a8a543370988191833212380a71b2b9"],
 ]);
+const IBLUSEND_CLAUDE_OAUTH = Object.freeze({
+  clientId: "https://claude.ai/oauth/claude-code-client-metadata",
+  scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write",
+  authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
+});
+const CODEX_MCP_SERVER_KEYS = new Set(["type", "url"]);
+const MCP_SERVER_KEYS = new Set(["type", "url", "oauth"]);
+const MCP_OAUTH_KEYS = new Set([
+  "clientId",
+  "scopes",
+  "authServerMetadataUrl",
+]);
 const SAFE_SEND_SKILL_MISMATCH_ERROR =
   "safe-draft-and-send: file must exactly match the canonical artifact";
 const CONTACT_STOP_CONTROL_MISMATCH_ERROR =
@@ -338,8 +350,11 @@ function validateManifestParity(codex, claude, errors) {
   if (codex.skills !== "./skills/" || claude.skills !== "./skills/") {
     errors.push("both provider manifests must use ./skills/");
   }
-  if (codex.mcpServers !== "./.mcp.json" || claude.mcpServers !== "./.mcp.json") {
-    errors.push("both provider manifests must use ./.mcp.json");
+  if (!codex.mcpServers || typeof codex.mcpServers !== "object" || Array.isArray(codex.mcpServers)) {
+    errors.push("OpenAI plugin manifest must inline its provider-neutral MCP server");
+  }
+  if (claude.mcpServers !== "./.mcp.json") {
+    errors.push("Claude plugin manifest must use ./.mcp.json");
   }
 }
 
@@ -494,15 +509,64 @@ export async function validatePackageRoot(root) {
     errors.push("OpenAI manifest must contain exactly three screenshots");
   }
 
+  const codexServers = codex.mcpServers;
+  if (
+    !codexServers ||
+    typeof codexServers !== "object" ||
+    Array.isArray(codexServers) ||
+    Object.keys(codexServers).length !== 1
+  ) {
+    errors.push("OpenAI plugin manifest must contain exactly one inline MCP server");
+  } else {
+    const [codexServerName] = Object.keys(codexServers);
+    const [codexServer] = Object.values(codexServers);
+    if (codexServerName !== slug) errors.push("OpenAI MCP server name must match the package slug");
+    rejectUnknown(codexServer, CODEX_MCP_SERVER_KEYS, errors, "OpenAI MCP server");
+    if (codexServer?.type !== "http") errors.push("OpenAI MCP server type must be http");
+    requireHttps(codexServer?.url, errors, "OpenAI MCP resource URL");
+    if (codexServer?.url !== "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public") {
+      errors.push("OpenAI MCP resource URL is not the approved public endpoint");
+    }
+  }
+
   const servers = mcp.mcpServers;
   if (!servers || typeof servers !== "object" || Array.isArray(servers) || Object.keys(servers).length !== 1) {
     errors.push("MCP manifest must contain exactly one server");
   } else {
     const [server] = Object.values(servers);
+    rejectUnknown(server, MCP_SERVER_KEYS, errors, "MCP server");
     if (server?.type !== "http") errors.push("MCP server type must be http");
     requireHttps(server?.url, errors, "MCP resource URL");
     if (server?.url !== "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public") {
       errors.push("MCP resource URL is not the approved public endpoint");
+    }
+    if (server?.oauth !== undefined) {
+      if (!server.oauth || typeof server.oauth !== "object" || Array.isArray(server.oauth)) {
+        errors.push("MCP server.oauth must be an object");
+      } else {
+        rejectUnknown(server.oauth, MCP_OAUTH_KEYS, errors, "MCP server.oauth");
+        requireHttps(server.oauth.clientId, errors, "MCP OAuth clientId");
+        requireString(server.oauth, "scopes", errors, "MCP server.oauth");
+        requireHttps(
+          server.oauth.authServerMetadataUrl,
+          errors,
+          "MCP OAuth authServerMetadataUrl",
+        );
+      }
+    }
+    if (slug === "iblusend") {
+      if (server?.oauth?.clientId !== IBLUSEND_CLAUDE_OAUTH.clientId) {
+        errors.push("iBluSend MCP OAuth clientId is not the approved Claude CIMD document");
+      }
+      if (server?.oauth?.scopes !== IBLUSEND_CLAUDE_OAUTH.scopes) {
+        errors.push("iBluSend MCP OAuth scopes are not the approved Read-and-act bundle");
+      }
+      if (
+        server?.oauth?.authServerMetadataUrl !==
+          IBLUSEND_CLAUDE_OAUTH.authServerMetadataUrl
+      ) {
+        errors.push("iBluSend MCP OAuth metadata URL is not canonical");
+      }
     }
     if (server?.headers || server?.env || server?.oauth?.clientSecret) {
       errors.push("MCP manifest must not embed headers, environment secrets, or an OAuth client secret");

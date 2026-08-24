@@ -1,6 +1,6 @@
 {
   "name": "iblusend",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
   "author": {
     "name": "iBluSend",
@@ -19,7 +19,12 @@
     "crm"
   ],
   "skills": "./skills/",
-  "mcpServers": "./.mcp.json",
+  "mcpServers": {
+    "iblusend": {
+      "type": "http",
+      "url": "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public"
+    }
+  },
   "apps": "./.app.json",
   "interface": {
     "displayName": "iBluSend",

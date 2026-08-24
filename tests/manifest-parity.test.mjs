@@ -22,7 +22,12 @@ test("OpenAI and Claude manifests share identity, skills, and MCP resource", asy
   }
   assert.equal(codex.skills, "./skills/");
   assert.equal(claude.skills, "./skills/");
-  assert.equal(codex.mcpServers, "./.mcp.json");
+  assert.deepEqual(codex.mcpServers, {
+    iblusend: {
+      type: "http",
+      url: "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public",
+    },
+  });
   assert.equal(claude.mcpServers, "./.mcp.json");
   assert.equal(codex.apps, "./.app.json");
   assert.equal(claude.apps, undefined);
@@ -38,6 +43,11 @@ test("OpenAI and Claude manifests share identity, skills, and MCP resource", asy
       iblusend: {
         type: "http",
         url: "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public",
+        oauth: {
+          clientId: "https://claude.ai/oauth/claude-code-client-metadata",
+          scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write",
+          authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
+        },
       },
     },
   });

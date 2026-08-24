@@ -83,7 +83,20 @@
       "required": ["serverName", "resourceUrl"],
       "properties": {
         "serverName": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
-        "resourceUrl": { "$ref": "#/$defs/httpsUrl" }
+        "resourceUrl": { "$ref": "#/$defs/httpsUrl" },
+        "oauth": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clientId", "scopes", "authServerMetadataUrl"],
+          "properties": {
+            "clientId": { "$ref": "#/$defs/httpsUrl" },
+            "scopes": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9:._-]+(?: [A-Za-z0-9:._-]+)*$"
+            },
+            "authServerMetadataUrl": { "$ref": "#/$defs/httpsUrl" }
+          }
+        }
       }
     },
     "openai": {

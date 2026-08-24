@@ -759,7 +759,9 @@ function codexManifest(brand) {
     license: brand.legal.license,
     keywords: brand.package.keywords,
     skills: "./skills/",
-    mcpServers: "./.mcp.json",
+    // Keep Codex on its provider-neutral MCP entry and issued app binding.
+    // Claude-specific CIMD fields live only in the Claude-referenced file.
+    mcpServers: codexMcpServers(brand),
     ...(brand.openai ? { apps: "./.app.json" } : {}),
     interface: {
       displayName: brand.package.displayName,
@@ -777,6 +779,15 @@ function codexManifest(brand) {
       logo: "./assets/logo.png",
       logoDark: "./assets/logo-dark.png",
       screenshots: SCREENSHOTS.map(([fileName]) => `./assets/${fileName}`),
+    },
+  };
+}
+
+function codexMcpServers(brand) {
+  return {
+    [brand.mcp.serverName]: {
+      type: "http",
+      url: brand.mcp.resourceUrl,
     },
   };
 }
@@ -819,6 +830,15 @@ function mcpManifest(brand) {
       [brand.mcp.serverName]: {
         type: "http",
         url: brand.mcp.resourceUrl,
+        ...(brand.mcp.oauth
+          ? {
+            oauth: {
+              clientId: brand.mcp.oauth.clientId,
+              scopes: brand.mcp.oauth.scopes,
+              authServerMetadataUrl: brand.mcp.oauth.authServerMetadataUrl,
+            },
+          }
+          : {}),
       },
     },
   };

@@ -133,6 +133,123 @@ test("iBluSend generation copies hash-pinned brand-kit assets byte for byte", as
   }
 });
 
+test("iBluSend pins Claude CIMD OAuth while Codex and white-label packages stay provider-neutral", async (t) => {
+  const iblusendOutput = await makeTemp(t, "iblusend-cimd");
+  const whiteLabelOutput = await makeTemp(t, "white-label-no-cimd");
+  const { brand: iblusend } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+  );
+  const { brand: whiteLabel } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "imessage-sender.example.json"),
+  );
+  await writeBrandPackage({ brand: iblusend, outputRoot: iblusendOutput });
+  await writeBrandPackage({ brand: whiteLabel, outputRoot: whiteLabelOutput });
+
+  const iblusendMcp = JSON.parse(await readFile(
+    path.join(iblusendOutput, "plugins", "iblusend", ".mcp.json"),
+    "utf8",
+  ));
+  const iblusendCodex = JSON.parse(await readFile(
+    path.join(
+      iblusendOutput,
+      "plugins",
+      "iblusend",
+      ".codex-plugin",
+      "plugin.json",
+    ),
+    "utf8",
+  ));
+  const whiteLabelMcp = JSON.parse(await readFile(
+    path.join(
+      whiteLabelOutput,
+      "plugins",
+      whiteLabel.package.slug,
+      ".mcp.json",
+    ),
+    "utf8",
+  ));
+  assert.deepEqual(iblusendMcp.mcpServers.iblusend.oauth, {
+    clientId: "https://claude.ai/oauth/claude-code-client-metadata",
+    scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write",
+    authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
+  });
+  assert.deepEqual(iblusendCodex.mcpServers, {
+    iblusend: {
+      type: "http",
+      url: "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public",
+    },
+  });
+  assert.equal(whiteLabelMcp.mcpServers[whiteLabel.mcp.serverName].oauth, undefined);
+});
+
+test("validator rejects Claude OAuth fields leaking into the OpenAI MCP entry", async (t) => {
+  const output = await makeTemp(t, "codex-cimd-leak");
+  const { brand } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+  );
+  await writeBrandPackage({ brand, outputRoot: output });
+
+  const pluginRoot = path.join(output, "plugins", "iblusend");
+  const relativeManifestPath = ".codex-plugin/plugin.json";
+  const manifestPath = path.join(pluginRoot, relativeManifestPath);
+  const original = await readFile(manifestPath, "utf8");
+  const manifest = JSON.parse(original);
+  manifest.mcpServers.iblusend.oauth = {
+    clientId: "https://claude.ai/oauth/claude-code-client-metadata",
+  };
+  const mutated = `${JSON.stringify(manifest, null, 2)}\n`;
+  await writeFile(manifestPath, mutated);
+
+  const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");
+  const originalDigest = createHash("sha256").update(original).digest("hex");
+  const mutatedDigest = createHash("sha256").update(mutated).digest("hex");
+  const checksums = (await readFile(checksumPath, "utf8")).replace(
+    `${originalDigest}  ${relativeManifestPath}`,
+    `${mutatedDigest}  ${relativeManifestPath}`,
+  );
+  await writeFile(checksumPath, checksums);
+
+  const errors = await validatePackageRoot(output);
+  assert.ok(errors.includes("OpenAI MCP server.oauth is not an accepted field"));
+  assert.equal(errors.some((error) => error.includes("checksum")), false);
+});
+
+test("validator rejects a checksum-refreshed change to the canonical Claude OAuth pins", async (t) => {
+  const output = await makeTemp(t, "altered-cimd");
+  const { brand } = await loadAndValidateBrand(
+    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+  );
+  await writeBrandPackage({ brand, outputRoot: output });
+
+  const pluginRoot = path.join(output, "plugins", "iblusend");
+  const relativeMcpPath = ".mcp.json";
+  const mcpPath = path.join(pluginRoot, relativeMcpPath);
+  const original = await readFile(mcpPath, "utf8");
+  const mcp = JSON.parse(original);
+  mcp.mcpServers.iblusend.oauth = {
+    clientId: "https://attacker.example/client-metadata",
+    scopes: "workspace:read",
+    authServerMetadataUrl: "https://attacker.example/oauth-metadata",
+  };
+  const mutated = `${JSON.stringify(mcp, null, 2)}\n`;
+  await writeFile(mcpPath, mutated);
+
+  const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");
+  const originalDigest = createHash("sha256").update(original).digest("hex");
+  const mutatedDigest = createHash("sha256").update(mutated).digest("hex");
+  const checksums = (await readFile(checksumPath, "utf8")).replace(
+    `${originalDigest}  ${relativeMcpPath}`,
+    `${mutatedDigest}  ${relativeMcpPath}`,
+  );
+  await writeFile(checksumPath, checksums);
+
+  const errors = await validatePackageRoot(output);
+  assert.ok(errors.includes("iBluSend MCP OAuth clientId is not the approved Claude CIMD document"));
+  assert.ok(errors.includes("iBluSend MCP OAuth scopes are not the approved Read-and-act bundle"));
+  assert.ok(errors.includes("iBluSend MCP OAuth metadata URL is not canonical"));
+  assert.equal(errors.some((error) => error.includes("checksum")), false);
+});
+
 test("brand loader rejects source artwork whose pinned digest has drifted", async (t) => {
   const { brandPath } = await makeSourceBrandFixture(t, ({ brand: fixtureBrand }) => {
     fixtureBrand.branding.composerIcon.sha256 = "0".repeat(64);
@@ -745,6 +862,32 @@ test("brand schema rejects an unsafe slug and non-HTTPS resource", async () => {
   assert.ok(errors.some((error) => error.includes("package.slug")));
   assert.ok(errors.some((error) => error.includes("mcp.resourceUrl")));
   assert.ok(errors.some((error) => error.includes("openai.appId")));
+});
+
+test("brand schema rejects unsafe OAuth metadata and secret-bearing fields", async () => {
+  const schema = JSON.parse(await readFile(
+    path.join(REPOSITORY_ROOT, "brands", "brand.schema.json"),
+    "utf8",
+  ));
+  const brand = JSON.parse(await readFile(
+    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
+    "utf8",
+  ));
+  brand.mcp.oauth = {
+    clientId: "http://claude.invalid/client",
+    scopes: " workspace:read  messages:send ",
+    authServerMetadataUrl: "http://iblusend.invalid/metadata",
+    clientSecret: "must-never-ship",
+  };
+  const errors = validateAgainstSchema(brand, schema);
+  for (const pathFragment of [
+    "mcp.oauth.clientId",
+    "mcp.oauth.scopes",
+    "mcp.oauth.authServerMetadataUrl",
+    "mcp.oauth.clientSecret",
+  ]) {
+    assert.ok(errors.some((error) => error.includes(pathFragment)), pathFragment);
+  }
 });
 
 test("app-less brand refuses a stale app mapping in reused output", async (t) => {

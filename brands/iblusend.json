@@ -4,7 +4,7 @@
   "package": {
     "slug": "iblusend",
     "displayName": "iBluSend",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
     "longDescription": "Connect one iBluSend workspace to inspect conversations, contacts, devices, groups, delivery status, opt-out state, and bot status. Draft and send only after showing the exact destination and content for approval.",
     "category": "Productivity",
@@ -28,7 +28,12 @@
   },
   "mcp": {
     "serverName": "iblusend",
-    "resourceUrl": "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public"
+    "resourceUrl": "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public",
+    "oauth": {
+      "clientId": "https://claude.ai/oauth/claude-code-client-metadata",
+      "scopes": "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write",
+      "authServerMetadataUrl": "https://iblusend.com/.well-known/oauth-authorization-server"
+    }
   },
   "openai": {
     "appId": "asdk_app_6a8a543370988191833212380a71b2b9"
