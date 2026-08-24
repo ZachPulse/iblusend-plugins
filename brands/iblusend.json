@@ -4,7 +4,7 @@
   "package": {
     "slug": "iblusend",
     "displayName": "iBluSend",
-    "version": "0.1.6",
+    "version": "1.0.0",
     "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
     "longDescription": "Connect one iBluSend workspace to inspect conversations, contacts, devices, groups, delivery status, opt-out state, and bot status. Draft and send only after showing the exact destination and content for approval.",
     "category": "Productivity",
@@ -19,11 +19,11 @@
     "repository": "https://github.com/ZachPulse/iblusend-plugins"
   },
   "legal": {
-    "homepage": "https://iblusend.com/developers",
+    "homepage": "https://iblusend.com/features/ai-assistants",
     "website": "https://iblusend.com",
     "support": "https://iblusend.com/support",
     "privacy": "https://iblusend.com/privacy",
-    "terms": "https://iblusend.com/terms",
+    "terms": "https://iblusend.com/ai-usage-terms",
     "license": "MIT"
   },
   "mcp": {
