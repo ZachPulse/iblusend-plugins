@@ -1,13 +1,13 @@
 {
   "name": "iblusend",
-  "version": "0.1.6",
+  "version": "1.0.0",
   "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
   "author": {
     "name": "iBluSend",
     "email": "support@iblusend.com",
     "url": "https://iblusend.com"
   },
-  "homepage": "https://iblusend.com/developers",
+  "homepage": "https://iblusend.com/features/ai-assistants",
   "repository": "https://github.com/ZachPulse/iblusend-plugins",
   "license": "MIT",
   "keywords": [
@@ -39,7 +39,7 @@
     ],
     "websiteURL": "https://iblusend.com",
     "privacyPolicyURL": "https://iblusend.com/privacy",
-    "termsOfServiceURL": "https://iblusend.com/terms",
+    "termsOfServiceURL": "https://iblusend.com/ai-usage-terms",
     "defaultPrompt": [
       "Triage my iBluSend inbox and flag conversations that need a reply.",
       "Draft a reply for one contact, then wait for my approval before sending.",

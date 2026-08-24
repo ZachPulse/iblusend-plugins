@@ -12,10 +12,10 @@ engine, does not bypass iBluSend compliance controls, and does not ship credenti
 
 ## Repository status
 
-This package remains a development/local beta and has **not** been submitted to a public
-marketplace. The iBluSend package now carries the real OpenAI app mapping proven in the private
-ChatGPT developer-mode beta; white-label output omits `.app.json` unless that brand has its own
-registered OpenAI app.
+Version `1.0.0` is the public-review release candidate. It has **not** been submitted to or
+published in a provider directory. The iBluSend package carries the OpenAI app mapping proven in
+the private ChatGPT developer-mode beta; white-label output omits `.app.json` unless that brand has
+its own registered OpenAI app.
 
 ## Layout
 
@@ -77,7 +77,8 @@ node scripts/validate-packages.mjs --root dist/imessage-sender
 `dist/` is ignored. Agency brand documents and archives stay private. Only iBluSend is intended
 for the first public submissions.
 
-See [local beta](docs/local-beta.md), [white-label packaging](docs/white-label.md), and the provider
+See the public [AI Assistants setup guide](https://iblusend.com/help/ai-assistants),
+[local beta](docs/local-beta.md), [white-label packaging](docs/white-label.md), and the provider
 submission runbooks under [`docs/submission/`](docs/submission/).
 
 ## Security

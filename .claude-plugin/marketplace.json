@@ -6,20 +6,20 @@
     "url": "https://iblusend.com"
   },
   "description": "Official iBluSend tools and guarded messaging workflows for one consented workspace.",
-  "version": "0.1.6",
+  "version": "1.0.0",
   "plugins": [
     {
       "name": "iblusend",
       "displayName": "iBluSend",
       "source": "./plugins/iblusend",
       "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
-      "version": "0.1.6",
+      "version": "1.0.0",
       "author": {
         "name": "iBluSend",
         "email": "support@iblusend.com",
         "url": "https://iblusend.com"
       },
-      "homepage": "https://iblusend.com/developers",
+      "homepage": "https://iblusend.com/features/ai-assistants",
       "repository": "https://github.com/ZachPulse/iblusend-plugins",
       "license": "MIT",
       "keywords": [

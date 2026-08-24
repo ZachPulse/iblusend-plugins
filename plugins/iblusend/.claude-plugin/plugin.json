@@ -2,14 +2,14 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "iblusend",
   "displayName": "iBluSend",
-  "version": "0.1.6",
+  "version": "1.0.0",
   "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
   "author": {
     "name": "iBluSend",
     "email": "support@iblusend.com",
     "url": "https://iblusend.com"
   },
-  "homepage": "https://iblusend.com/developers",
+  "homepage": "https://iblusend.com/features/ai-assistants",
   "repository": "https://github.com/ZachPulse/iblusend-plugins",
   "license": "MIT",
   "keywords": [
