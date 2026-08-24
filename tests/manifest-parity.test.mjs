@@ -77,7 +77,7 @@ test("package has three shared skills and an issued OpenAI app mapping", async (
   assert.deepEqual(Object.keys(app.apps.iblusend), ["id"]);
 });
 
-test("checked-in provider copy preserves group reads and the 8/11 contract", async () => {
+test("checked-in provider copy preserves group reads and the eleven-tool scope challenge", async () => {
   const inboxSkill = await readFile(
     path.join(PLUGIN, "skills", "inbox-triage", "SKILL.md"),
     "utf8",
@@ -90,16 +90,24 @@ test("checked-in provider copy preserves group reads and the 8/11 contract", asy
   );
   assert.doesNotMatch(contactSkill, /`(?:create_contact|update_contact)`/);
 
+  const readme = await readFile(path.join(PLUGIN, "README.md"), "utf8");
+  assert.match(readme, /Every OAuth grant discovers the same\neleven curated tools\./);
+  assert.match(readme, /the three action tools return\nan `insufficient_scope` challenge before validation or dispatch/);
+  assert.doesNotMatch(readme, /Read-only grants discover only read\ntools/);
+
   const checklist = await readFile(path.join(PLUGIN, "SUBMISSION_CHECKLIST.md"), "utf8");
-  assert.match(checklist, /Read-only access discovers eight tools; Read and act discovers eleven/);
-  assert.doesNotMatch(checklist, /thirteen/i);
+  assert.match(checklist, /OAuth discovery exposes exactly eleven curated tools for both access levels/);
+  assert.match(checklist, /Read-only action calls return `insufficient_scope` before validation or dispatch/);
+  assert.doesNotMatch(checklist, /Read-only access discovers eight tools/);
 
   const openAiSubmission = await readFile(path.join(ROOT, "docs", "submission", "openai.md"), "utf8");
-  assert.match(openAiSubmission, /exactly eight and eleven tools respectively/);
-  assert.doesNotMatch(openAiSubmission, /thirteen/i);
+  assert.match(openAiSubmission, /OAuth discovery exposes exactly eleven curated tools for both access levels/);
+  assert.match(openAiSubmission, /return `insufficient_scope` before validation\s+or dispatch/);
+  assert.doesNotMatch(openAiSubmission, /expose exactly eight and eleven tools respectively/);
 
   const localBeta = await readFile(path.join(ROOT, "docs", "local-beta.md"), "utf8");
-  assert.match(localBeta, /OAuth Read and act: exactly eleven tools/);
+  assert.match(localBeta, /OAuth Read only and Read and act both discover exactly eleven tools/);
+  assert.match(localBeta, /API-key Read only: exactly eight tools/);
   assert.match(localBeta, /API-key Read and act: exactly thirteen tools/);
 
   const claudeSubmission = await readFile(

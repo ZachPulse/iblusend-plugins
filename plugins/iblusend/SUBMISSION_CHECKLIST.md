@@ -4,7 +4,7 @@
 - [ ] Package version is `0.1.6` everywhere.
 - [ ] MCP resource is exactly `https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public`.
 - [ ] OAuth discovery, PKCE, workspace consent, scopes, refresh, and revocation pass served tests.
-- [ ] Read-only access discovers eight tools; Read and act discovers eleven.
+- [ ] OAuth discovery exposes exactly eleven curated tools for both access levels; Read-only action calls return `insufficient_scope` before validation or dispatch.
 - [ ] Send is marked consequential and provider approval remains enabled.
 - [ ] Support, privacy, and terms URLs are publicly reachable.
 - [ ] Screenshots match the current behavior and contain no customer data.

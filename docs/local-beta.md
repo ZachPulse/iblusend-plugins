@@ -48,7 +48,8 @@ Record counts and tool names, not response payloads containing workspace or cont
 
 - API-key Read only: exactly eight tools.
 - API-key Read and act: exactly thirteen tools.
-- OAuth Read only: exactly eight tools; OAuth Read and act: exactly eleven tools.
+- OAuth Read only and Read and act both discover exactly eleven tools. Under Read only, each action
+  tool returns `insufficient_scope` before validation or dispatch.
 - A held-back tool call returns an MCP method/tool error before dispatch.
 - A hidden send argument, live iMessage probe, group creation, or group-media attempt is rejected.
 - The advanced non-public resource remains eighteen tools in the platform regression suite.
@@ -80,9 +81,9 @@ Verify:
 
 ChatGPT developer-mode end-to-end OAuth uses the registered iBluSend MCP connection referenced by
 `.app.json`. Confirm a fresh install opens the iBluSend consent flow, binds exactly one workspace,
-and exposes eight tools after choosing Read only or eleven after choosing Read and act. Confirm the
-OAuth `send_message` schema accepts only a 1:1 `to` target and rejects `group_chat_id` before
-dispatch.
+and exposes eleven tools after either choice. Under Read only, confirm one action-tool call returns
+`insufficient_scope` before validation or dispatch. Confirm the OAuth `send_message` schema accepts
+only a 1:1 `to` target and rejects `group_chat_id` before dispatch.
 
 ## 4. Claude plugin loading
 

@@ -912,9 +912,11 @@ Authorization header to this package.
 - \`safe-draft-and-send\` — exact preview, explicit confirmation, one send, status check.
 - \`contact-device-compliance\` — inspect one contact/device or confirm one opt-out/bot change.
 
-The connection is bound to one workspace per consent grant. Read-only grants discover only read
-tools; Read and act grants add the curated write tools. Public OAuth sends are 1:1 only; group
-conversations remain readable. This plugin is not a bulk sender.
+The connection is bound to one workspace per consent grant. Every OAuth grant discovers the same
+eleven curated tools. A Read-only grant can use the eight read tools; the three action tools return
+an \`insufficient_scope\` challenge before validation or dispatch. Read and act authorizes those
+actions, which still require host confirmation. Public OAuth sends are 1:1 only; group conversations
+remain readable. This plugin is not a bulk sender.
 `;
 }
 
@@ -925,7 +927,7 @@ function submissionChecklist(brand) {
 - [ ] Package version is \`${brand.package.version}\` everywhere.
 - [ ] MCP resource is exactly \`${brand.mcp.resourceUrl}\`.
 - [ ] OAuth discovery, PKCE, workspace consent, scopes, refresh, and revocation pass served tests.
-- [ ] Read-only access discovers eight tools; Read and act discovers eleven.
+- [ ] OAuth discovery exposes exactly eleven curated tools for both access levels; Read-only action calls return \`insufficient_scope\` before validation or dispatch.
 - [ ] Send is marked consequential and provider approval remains enabled.
 - [ ] Support, privacy, and terms URLs are publicly reachable.
 - [ ] Screenshots match the current behavior and contain no customer data.

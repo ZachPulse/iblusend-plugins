@@ -180,6 +180,27 @@ test("iBluSend pins Claude CIMD OAuth while Codex and white-label packages stay 
     },
   });
   assert.equal(whiteLabelMcp.mcpServers[whiteLabel.mcp.serverName].oauth, undefined);
+
+  const readme = await readFile(
+    path.join(iblusendOutput, "plugins", "iblusend", "README.md"),
+    "utf8",
+  );
+  assert.match(readme, /Every OAuth grant discovers the same\neleven curated tools\./);
+  assert.match(
+    readme,
+    /the three action tools return\nan `insufficient_scope` challenge before validation or dispatch/,
+  );
+  assert.doesNotMatch(readme, /Read-only grants discover only read\ntools/);
+
+  const checklist = await readFile(
+    path.join(iblusendOutput, "plugins", "iblusend", "SUBMISSION_CHECKLIST.md"),
+    "utf8",
+  );
+  assert.match(
+    checklist,
+    /OAuth discovery exposes exactly eleven curated tools for both access levels; Read-only action calls return `insufficient_scope` before validation or dispatch\./,
+  );
+  assert.doesNotMatch(checklist, /Read-only access discovers eight tools/);
 });
 
 test("validator rejects Claude OAuth fields leaking into the OpenAI MCP entry", async (t) => {

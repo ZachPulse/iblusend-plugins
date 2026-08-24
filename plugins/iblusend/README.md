@@ -15,6 +15,8 @@ Authorization header to this package.
 - `safe-draft-and-send` — exact preview, explicit confirmation, one send, status check.
 - `contact-device-compliance` — inspect one contact/device or confirm one opt-out/bot change.
 
-The connection is bound to one workspace per consent grant. Read-only grants discover only read
-tools; Read and act grants add the curated write tools. Public OAuth sends are 1:1 only; group
-conversations remain readable. This plugin is not a bulk sender.
+The connection is bound to one workspace per consent grant. Every OAuth grant discovers the same
+eleven curated tools. A Read-only grant can use the eight read tools; the three action tools return
+an `insufficient_scope` challenge before validation or dispatch. Read and act authorizes those
+actions, which still require host confirmation. Public OAuth sends are 1:1 only; group conversations
+remain readable. This plugin is not a bulk sender.
