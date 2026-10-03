@@ -20,6 +20,11 @@
     "inbox",
     "crm"
   ],
+  "icon": "./assets/icon.png",
+  "documentationUrl": "https://iblusend.com/help/ai-assistants",
+  "supportUrl": "https://iblusend.com/support",
+  "privacyPolicyUrl": "https://iblusend.com/privacy",
+  "termsOfServiceUrl": "https://iblusend.com/ai-usage-terms",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json"
 }

@@ -60,13 +60,19 @@ const CLAUDE_KEYS = new Set([
   "author",
   "description",
   "displayName",
+  // Directory listing fields (Anthropic directory portal reads them; Claude Code ignores them).
+  "documentationUrl",
   "homepage",
+  "icon",
   "keywords",
   "license",
   "mcpServers",
   "name",
+  "privacyPolicyUrl",
   "repository",
   "skills",
+  "supportUrl",
+  "termsOfServiceUrl",
   "version",
 ]);
 const ISSUED_OPENAI_APP_IDS = new Map([

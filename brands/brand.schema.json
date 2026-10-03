@@ -72,6 +72,7 @@
         "homepage": { "$ref": "#/$defs/httpsUrl" },
         "website": { "$ref": "#/$defs/httpsUrl" },
         "support": { "$ref": "#/$defs/httpsUrl" },
+        "documentation": { "$ref": "#/$defs/httpsUrl" },
         "privacy": { "$ref": "#/$defs/httpsUrl" },
         "terms": { "$ref": "#/$defs/httpsUrl" },
         "license": { "const": "MIT" }
