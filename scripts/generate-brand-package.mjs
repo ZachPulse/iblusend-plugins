@@ -819,6 +819,12 @@ function claudeManifest(brand) {
     repository: brand.publisher.repository,
     license: brand.legal.license,
     keywords: brand.package.keywords,
+    // Directory listing fields: read by Anthropic's directory portal, ignored by Claude Code.
+    icon: "./assets/icon.png",
+    ...(brand.legal.documentation ? { documentationUrl: brand.legal.documentation } : {}),
+    supportUrl: brand.legal.support,
+    privacyPolicyUrl: brand.legal.privacy,
+    termsOfServiceUrl: brand.legal.terms,
     skills: "./skills/",
     mcpServers: "./.mcp.json",
   };

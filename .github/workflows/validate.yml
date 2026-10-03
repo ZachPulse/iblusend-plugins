@@ -19,6 +19,6 @@ jobs:
       - name: Run dependency-free package tests
         run: npm test
       - name: Run Claude's strict validator
-        run: npx --yes @anthropic-ai/claude-code@2.1.235 plugin validate plugins/iblusend --strict
+        run: npx --yes @anthropic-ai/claude-code@2.1.288 plugin validate plugins/iblusend --strict
       - name: Validate Claude repository marketplace
-        run: npx --yes @anthropic-ai/claude-code@2.1.235 plugin validate . --strict
+        run: npx --yes @anthropic-ai/claude-code@2.1.288 plugin validate . --strict
