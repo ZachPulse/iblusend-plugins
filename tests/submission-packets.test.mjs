@@ -30,8 +30,8 @@ test("release candidate version and public URLs stay aligned", async () => {
     claudeMarketplace.version,
     claudeMarketplace.plugins[0].version,
   ];
-  assert.deepEqual(new Set(versions), new Set(["1.0.0"]));
-  assert.match(checklist, /Package version is `1\.0\.0` everywhere/);
+  assert.deepEqual(new Set(versions), new Set(["1.1.0"]));
+  assert.match(checklist, /Package version is `1\.1\.0` everywhere/);
 
   assert.equal(brand.legal.homepage, "https://iblusend.com/features/ai-assistants");
   assert.equal(brand.legal.terms, "https://iblusend.com/ai-usage-terms");
@@ -40,7 +40,7 @@ test("release candidate version and public URLs stay aligned", async () => {
   assert.equal(codex.interface.termsOfServiceURL, brand.legal.terms);
 });
 
-test("shared reviewer matrix pins five positive, three negative, and eleven tools", async () => {
+test("shared reviewer matrix pins five positive, three negative, thirteen messaging and sixteen area tools", async () => {
   const matrix = await read("docs/submission/reviewer-test-matrix.md");
   const positive = [...matrix.matchAll(/^### P\d+:/gm)].map((match) => match[0]);
   const negative = [...matrix.matchAll(/^### N\d+:/gm)].map((match) => match[0]);
@@ -53,12 +53,12 @@ test("shared reviewer matrix pins five positive, three negative, and eleven tool
   ]);
   assert.deepEqual(negative, ["### N1:", "### N2:", "### N3:"]);
 
+  const toolRows = (section) => [...section.matchAll(/^\| `([^`]+)` \|/gm)].map((match) => match[1]);
   const inventory = matrix.slice(
     matrix.indexOf("## Exact tool inventory"),
-    matrix.indexOf("## Five positive cases"),
+    matrix.indexOf("## Optional area tools"),
   );
-  const tools = [...inventory.matchAll(/^\| `([^`]+)` \|/gm)].map((match) => match[1]);
-  assert.deepEqual(tools, [
+  assert.deepEqual(toolRows(inventory), [
     "get_conversation",
     "list_devices",
     "check_message_status",
@@ -67,14 +67,25 @@ test("shared reviewer matrix pins five positive, three negative, and eleven tool
     "list_groups",
     "list_contacts",
     "lookup_imessage",
+    "list_call_logs",
+    "get_call_transcript",
     "send_message",
     "opt_out",
     "set_bot_status",
   ]);
 
-  assert.match(matrix, /Both access levels discover these eleven tools/);
+  const areaInventory = matrix.slice(
+    matrix.indexOf("## Optional area tools"),
+    matrix.indexOf("## Five positive cases"),
+  );
+  const { PLUGIN_AREAS, areaTools } = await import("../scripts/area-skills.mjs");
+  assert.deepEqual(toolRows(areaInventory), PLUGIN_AREAS.flatMap(areaTools));
+  assert.equal(toolRows(areaInventory).length, 16);
+
+  assert.match(matrix, /Both access levels discover these thirteen messaging tools/);
   assert.match(matrix, /`insufficient_scope` before argument validation or dispatch/);
   assert.match(matrix, /`send_message` requires one E\.164 `to` target and exposes no group target/);
+  assert.match(matrix, /Nothing in an area sends, launches or books/);
   assert.doesNotMatch(matrix, /\+1\d{10}/);
 });
 
@@ -90,7 +101,7 @@ test("OpenAI packet carries current portal, identity, scan, and review gates", a
     "https://iblusend.com/ai-usage-terms",
     "five positive cases, three negative cases",
     "openai-apps-challenge",
-    "Initial public submission of iBluSend 1.0.0",
+    "Initial public submission of iBluSend 1.1.0",
   ]) {
     assert.ok(packet.includes(required), required);
   }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -45,7 +45,7 @@ test("OpenAI and Claude manifests share identity, skills, and MCP resource", asy
         url: "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public",
         oauth: {
           clientId: "https://claude.ai/oauth/claude-code-client-metadata",
-          scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write",
+          scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write",
           authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
         },
       },
@@ -66,8 +66,18 @@ test("both marketplace catalogs resolve the same package", async () => {
   assert.equal(codex.plugins[0].policy.authentication, "ON_INSTALL");
 });
 
-test("package has three shared skills and an issued OpenAI app mapping", async () => {
-  const skillNames = ["contact-device-compliance", "inbox-triage", "safe-draft-and-send"];
+test("package has seven shared skills and an issued OpenAI app mapping", async () => {
+  const skillNames = [
+    "calendar",
+    "campaigns",
+    "contact-device-compliance",
+    "inbox-triage",
+    "reports",
+    "safe-draft-and-send",
+    "templates",
+  ];
+  const skillDirectories = (await readdir(path.join(PLUGIN, "skills"))).sort();
+  assert.deepEqual(skillDirectories, skillNames);
   for (const skillName of skillNames) {
     const contents = await readFile(path.join(PLUGIN, "skills", skillName, "SKILL.md"), "utf8");
     assert.match(contents, new RegExp(`^---\\nname: ${skillName}\\n`));
@@ -77,7 +87,7 @@ test("package has three shared skills and an issued OpenAI app mapping", async (
   assert.deepEqual(Object.keys(app.apps.iblusend), ["id"]);
 });
 
-test("checked-in provider copy preserves group reads and the eleven-tool scope challenge", async () => {
+test("checked-in provider copy preserves group reads and the thirteen-tool scope challenge", async () => {
   const inboxSkill = await readFile(
     path.join(PLUGIN, "skills", "inbox-triage", "SKILL.md"),
     "utf8",
@@ -91,24 +101,24 @@ test("checked-in provider copy preserves group reads and the eleven-tool scope c
   assert.doesNotMatch(contactSkill, /`(?:create_contact|update_contact)`/);
 
   const readme = await readFile(path.join(PLUGIN, "README.md"), "utf8");
-  assert.match(readme, /Every OAuth grant discovers the same\neleven curated tools\./);
+  assert.match(readme, /Every OAuth grant discovers the same\nthirteen messaging tools\./);
   assert.match(readme, /the three action tools return\nan `insufficient_scope` challenge before validation or dispatch/);
   assert.doesNotMatch(readme, /Read-only grants discover only read\ntools/);
 
   const checklist = await readFile(path.join(PLUGIN, "SUBMISSION_CHECKLIST.md"), "utf8");
-  assert.match(checklist, /OAuth discovery exposes exactly eleven curated tools for both access levels/);
+  assert.match(checklist, /OAuth discovery exposes the thirteen messaging tools for both access levels/);
   assert.match(checklist, /Read-only action calls return `insufficient_scope` before validation or dispatch/);
   assert.doesNotMatch(checklist, /Read-only access discovers eight tools/);
 
   const openAiSubmission = await readFile(path.join(ROOT, "docs", "submission", "openai.md"), "utf8");
-  assert.match(openAiSubmission, /OAuth discovery exposes exactly eleven curated tools for both access levels/);
+  assert.match(openAiSubmission, /OAuth discovery exposes exactly thirteen messaging tools for both access levels/);
   assert.match(openAiSubmission, /return `insufficient_scope` before validation\s+or dispatch/);
   assert.doesNotMatch(openAiSubmission, /expose exactly eight and eleven tools respectively/);
 
   const localBeta = await readFile(path.join(ROOT, "docs", "local-beta.md"), "utf8");
-  assert.match(localBeta, /OAuth Read only and Read and act both discover exactly eleven tools/);
-  assert.match(localBeta, /API-key Read only: exactly eight tools/);
-  assert.match(localBeta, /API-key Read and act: exactly thirteen tools/);
+  assert.match(localBeta, /OAuth Read only and Read and act both discover the same thirteen messaging tools/);
+  assert.match(localBeta, /API-key Read only: exactly ten tools/);
+  assert.match(localBeta, /API-key Read and act: exactly fifteen tools/);
 
   const claudeSubmission = await readFile(
     path.join(ROOT, "docs", "submission", "claude-connector.md"),

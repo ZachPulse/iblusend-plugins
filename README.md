@@ -1,18 +1,26 @@
 # iBluSend Plugins
 
 Official, shared plugin packaging for iBluSend on OpenAI and Claude. One package connects both
-providers to the same workspace-bound MCP resource and supplies three provider-neutral workflows:
+providers to the same workspace-bound MCP resource and supplies seven provider-neutral workflows:
 
 - inbox triage;
-- safe draft and send; and
-- contact, device, and compliance operations.
+- safe draft and send;
+- contact, device, and compliance operations; and
+- one workflow for each optional area: reports, templates, campaigns, and calendar.
+
+Every OAuth grant discovers thirteen messaging tools: ten read tools and three action tools that
+need Read and act. On the Connect screen the person can also tick optional areas (reports,
+templates, campaigns, calendar, and the owner-only workflows, BluBot, and voice agents). Each area
+is its own OAuth scope; a call without it returns `insufficient_scope`. Nothing in an area sends,
+launches, or books: drafts and booking links wait for the person to press the button in the app.
 
 The public package intentionally exposes the curated public-v1 contract. It is not a bulk campaign
 engine, does not bypass iBluSend compliance controls, and does not ship credentials.
 
 ## Repository status
 
-Version `1.0.0` is the public-review release candidate. It has **not** been submitted to or
+Version `1.1.0` is the public-review release candidate. It needs the iBluSend server release that
+adds the optional areas and lets the plug-in apps request them; do not publish it before that is live. It has **not** been submitted to or
 published in a provider directory. The iBluSend package carries the OpenAI app mapping proven in
 the private ChatGPT developer-mode beta; white-label output omits `.app.json` unless that brand has
 its own registered OpenAI app.

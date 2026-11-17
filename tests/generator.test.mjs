@@ -15,6 +15,10 @@ import {
   collectFiles,
   validatePackageRoot,
 } from "../scripts/validate-packages.mjs";
+import {
+  PLUGIN_AREAS,
+  renderAreaAccessSection,
+} from "../scripts/area-skills.mjs";
 
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const IBLUSEND_SOURCE_ASSETS = [
@@ -170,7 +174,7 @@ test("iBluSend pins Claude CIMD OAuth while Codex and white-label packages stay 
   ));
   assert.deepEqual(iblusendMcp.mcpServers.iblusend.oauth, {
     clientId: "https://claude.ai/oauth/claude-code-client-metadata",
-    scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write",
+    scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write",
     authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
   });
   assert.deepEqual(iblusendCodex.mcpServers, {
@@ -185,7 +189,7 @@ test("iBluSend pins Claude CIMD OAuth while Codex and white-label packages stay 
     path.join(iblusendOutput, "plugins", "iblusend", "README.md"),
     "utf8",
   );
-  assert.match(readme, /Every OAuth grant discovers the same\neleven curated tools\./);
+  assert.match(readme, /Every OAuth grant discovers the same\nthirteen messaging tools\./);
   assert.match(
     readme,
     /the three action tools return\nan `insufficient_scope` challenge before validation or dispatch/,
@@ -198,7 +202,7 @@ test("iBluSend pins Claude CIMD OAuth while Codex and white-label packages stay 
   );
   assert.match(
     checklist,
-    /OAuth discovery exposes exactly eleven curated tools for both access levels; Read-only action calls return `insufficient_scope` before validation or dispatch\./,
+    /OAuth discovery exposes the thirteen messaging tools for both access levels; Read-only action calls return `insufficient_scope` before validation or dispatch\./,
   );
   assert.doesNotMatch(checklist, /Read-only access discovers eight tools/);
 });
@@ -266,7 +270,7 @@ test("validator rejects a checksum-refreshed change to the canonical Claude OAut
 
   const errors = await validatePackageRoot(output);
   assert.ok(errors.includes("iBluSend MCP OAuth clientId is not the approved Claude CIMD document"));
-  assert.ok(errors.includes("iBluSend MCP OAuth scopes are not the approved Read-and-act bundle"));
+  assert.ok(errors.includes("iBluSend MCP OAuth scopes are not the approved request list"));
   assert.ok(errors.includes("iBluSend MCP OAuth metadata URL is not canonical"));
   assert.equal(errors.some((error) => error.includes("checksum")), false);
 });
@@ -637,8 +641,8 @@ for (const [label, unsafeGuidance, expectedError] of [
   });
 }
 
-test("validator rejects a checksum-covered unexpected fourth skill", async (t) => {
-  const output = await makeTemp(t, "unexpected-fourth-skill");
+test("validator rejects a checksum-covered unexpected extra skill", async (t) => {
+  const output = await makeTemp(t, "unexpected-extra-skill");
   const { brand } = await loadAndValidateBrand(
     path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
   );
@@ -1000,4 +1004,84 @@ test("iMessage Sender output has no unintended iBluSend branding", async (t) => 
     text = text.replaceAll(allowed, "");
   }
   assert.doesNotMatch(text, /iblusend/i);
+});
+
+for (const [label, brandFile] of [
+  ["iblusend", "iblusend.json"],
+  ["imessage-sender", "imessage-sender.example.json"],
+]) {
+  test(`${label} area skills carry the access rules and the brand name`, async (t) => {
+    const output = await makeTemp(t, `${label}-area-skills`);
+    const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", brandFile));
+    await writeBrandPackage({ brand, outputRoot: output });
+
+    for (const area of PLUGIN_AREAS) {
+      const contents = await readFile(
+        path.join(output, "plugins", brand.package.slug, "skills", area.skill, "SKILL.md"),
+        "utf8",
+      );
+      assert.match(contents, new RegExp(`^---\\nname: ${area.skill}\\n`));
+      assert.ok(contents.includes(renderAreaAccessSection(area)), area.skill);
+      assert.ok(contents.includes(brand.package.displayName), area.skill);
+      for (const tool of [...area.readTools, ...area.draftTools]) {
+        assert.ok(contents.includes(`\`${tool}\``), `${area.skill}: ${tool}`);
+      }
+      if (area.draftScope) assert.match(contents, /choose Read and act/);
+    }
+  });
+}
+
+test("area skills say drafts and booking links send, launch and book nothing", async (t) => {
+  const output = await makeTemp(t, "area-boundaries");
+  const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
+  await writeBrandPackage({ brand, outputRoot: output });
+  const read = (skill) => readFile(
+    path.join(output, "plugins", "iblusend", "skills", skill, "SKILL.md"),
+    "utf8",
+  );
+
+  const campaigns = await read("campaigns");
+  assert.match(campaigns, /A campaign launches only when the person presses Launch in the app/);
+  assert.match(campaigns, /Never say a campaign was sent, scheduled to send, or launched/);
+  const calendar = await read("calendar");
+  assert.match(calendar, /You book, move and cancel nothing/);
+  assert.match(calendar, /Never say an appointment was booked, moved or cancelled/);
+  const templates = await read("templates");
+  assert.match(templates, /Saving a template never sends a message/);
+});
+
+test("validator rejects a checksum-refreshed area skill with weakened access rules", async (t) => {
+  const output = await makeTemp(t, "weakened-area-access");
+  const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
+  await writeBrandPackage({ brand, outputRoot: output });
+
+  const errors = await validateChecksumRefreshedSkillMutation(
+    output,
+    "campaigns",
+    (contents) => contents.replace(
+      "Do not retry, do not look for another tool to get around it",
+      "Retry with another tool",
+    ),
+  );
+  assert.ok(errors.includes("campaigns: area access rules must exactly match the canonical artifact"));
+  assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
+});
+
+test("validator requires every area skill", async (t) => {
+  const output = await makeTemp(t, "missing-area-skill");
+  const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
+  await writeBrandPackage({ brand, outputRoot: output });
+
+  const pluginRoot = path.join(output, "plugins", "iblusend");
+  await rm(path.join(pluginRoot, "skills", "calendar"), { recursive: true });
+  const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");
+  const checksums = (await readFile(checksumPath, "utf8"))
+    .split("\n")
+    .filter((line) => !line.endsWith("  skills/calendar/SKILL.md"))
+    .join("\n");
+  await writeFile(checksumPath, checksums);
+
+  const errors = await validatePackageRoot(output);
+  assert.ok(errors.includes("missing skill: skills/calendar/SKILL.md"));
+  assert.equal(errors.some((error) => error.includes("checksum")), false);
 });

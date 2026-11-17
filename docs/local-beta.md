@@ -46,10 +46,12 @@ curl --fail-with-body --silent --show-error \
 
 Record counts and tool names, not response payloads containing workspace or contact data.
 
-- API-key Read only: exactly eight tools.
-- API-key Read and act: exactly thirteen tools.
-- OAuth Read only and Read and act both discover exactly eleven tools. Under Read only, each action
-  tool returns `insufficient_scope` before validation or dispatch.
+- API-key Read only: exactly ten tools.
+- API-key Read and act: exactly fifteen tools.
+- OAuth Read only and Read and act both discover the same thirteen messaging tools. Under Read only,
+  each action tool returns `insufficient_scope` before validation or dispatch.
+- OAuth grants also discover the sixteen area tools. Each returns `insufficient_scope` unless its
+  area was ticked on the Connect screen; template and campaign drafts also need Read and act.
 - A held-back tool call returns an MCP method/tool error before dispatch.
 - A hidden send argument, live iMessage probe, group creation, or group-media attempt is rejected.
 - The advanced non-public resource remains eighteen tools in the platform regression suite.
@@ -74,14 +76,14 @@ install **iBluSend**. Start a new task so plugin skills and MCP configuration re
 
 Verify:
 
-- all three skills appear under the iBluSend namespace;
+- all seven skills appear under the iBluSend namespace;
 - the package card uses the local assets and legal links;
 - the MCP connection asks for authentication rather than exposing a credential; and
 - a draft-only prompt stops before `send_message`.
 
 ChatGPT developer-mode end-to-end OAuth uses the registered iBluSend MCP connection referenced by
 `.app.json`. Confirm a fresh install opens the iBluSend consent flow, binds exactly one workspace,
-and exposes eleven tools after either choice. Under Read only, confirm one action-tool call returns
+and exposes the thirteen messaging tools after either choice, plus the area tools. Under Read only, confirm one action-tool call returns
 `insufficient_scope` before validation or dispatch. Confirm the OAuth `send_message` schema accepts
 only a 1:1 `to` target and rejects `group_chat_id` before dispatch.
 
@@ -93,7 +95,7 @@ Load the package directly without installing it globally:
 claude --plugin-dir plugins/iblusend
 ```
 
-In Claude Code, run `/reload-plugins`, inspect `/plugin`, and inspect `/mcp`. Confirm all three
+In Claude Code, run `/reload-plugins`, inspect `/plugin`, and inspect `/mcp`. Confirm all seven
 skills are namespaced to iBluSend and the remote server is listed.
 
 Before production OAuth exists, a separately named local MCP entry can exercise the sandbox key.
@@ -122,6 +124,8 @@ Run each against synthetic fixtures:
    for explicit confirmation without sending.
 3. Compliance: it previews one before/after change and stops for confirmation. A read-only
    connection explains the missing scope instead of attempting a write.
+4. Areas: with an area left unticked, its tool returns `insufficient_scope` and the skill asks the
+   person to reconnect and tick it. A campaign draft and a booking link send and book nothing.
 
 Capture redacted screenshots of package/skill discovery only. Never capture a bearer value,
 authorization callback query, workspace identifier, phone number, contact name, or message body.
@@ -130,7 +134,7 @@ authorization callback query, workspace identifier, phone number, contact name, 
 
 - Static validators pass.
 - Tool counts and held-back argument failures match the public-v1 contract.
-- Both hosts load the same three skills and same MCP resource.
+- Both hosts load the same seven skills and same MCP resource.
 - No write or real-world send occurs.
 - The registered iBluSend app binding and read-only production OAuth proof are recorded; write/send
   E2E remains blocked until a server-side owned-recipient allowlist exists.
