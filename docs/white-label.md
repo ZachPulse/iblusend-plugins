@@ -42,7 +42,7 @@ node scripts/generate-brand-package.mjs \
 node scripts/validate-packages.mjs --root dist/imessage-sender
 ```
 
-The output includes both marketplace catalogs, both provider manifests, one `.mcp.json`, all three
+The output includes both marketplace catalogs, both provider manifests, one `.mcp.json`, all seven
 skills, six PNG assets, a submission checklist, and SHA-256 checksums. Source artwork is copied
 without resizing or recompression. Generation has no timestamp and is deterministic for the same
 brand document, source bytes, and generator version.

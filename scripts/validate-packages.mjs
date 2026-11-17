@@ -9,12 +9,18 @@ import {
   renderSafeSendSkill,
   renderStopControlSection,
 } from "./safe-send-body.mjs";
+import {
+  PLUGIN_AREAS,
+  renderAreaAccessSection,
+} from "./area-skills.mjs";
 
 const REQUIRED_SKILLS = [
   "contact-device-compliance",
   "inbox-triage",
   "safe-draft-and-send",
+  ...PLUGIN_AREAS.map((area) => area.skill),
 ];
+const AREAS_BY_SKILL = new Map(PLUGIN_AREAS.map((area) => [area.skill, area]));
 const HELD_BACK_TOOLS = [
   "create_contact",
   "mark_read",
@@ -322,6 +328,10 @@ async function validateSkill(pluginRoot, skillName, errors) {
     !contents.includes(renderStopControlSection(["opt_out", "set_bot_status"]))
   ) {
     errors.push(CONTACT_STOP_CONTROL_MISMATCH_ERROR);
+  }
+  const area = AREAS_BY_SKILL.get(skillName);
+  if (area && !contents.includes(renderAreaAccessSection(area))) {
+    errors.push(`${skillName}: area access rules must exactly match the canonical artifact`);
   }
   let frontmatter = "";
   if (!contents.startsWith("---\n")) {

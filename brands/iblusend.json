@@ -4,9 +4,9 @@
   "package": {
     "slug": "iblusend",
     "displayName": "iBluSend",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
-    "longDescription": "Connect one iBluSend workspace to inspect conversations, contacts, devices, groups, delivery status, opt-out state, and bot status. Draft and send only after showing the exact destination and content for approval.",
+    "longDescription": "Connect one iBluSend workspace to inspect conversations, contacts, devices, groups, delivery status, opt-out state, and bot status. Draft and send only after showing the exact destination and content for approval. If the person ticks them when connecting, it can also read reports, templates, campaigns and the calendar, save template and campaign drafts, and prepare booking links they confirm in the app.",
     "category": "Productivity",
     "capabilities": ["Interactive", "Read", "Write"],
     "keywords": ["imessage", "sms", "messaging", "contacts", "inbox", "crm"]

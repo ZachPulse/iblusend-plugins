@@ -30,6 +30,7 @@ Tool names may be namespaced by the host. Match the base names below:
   messages per call.
 - `get_opt_out_status` when reply eligibility matters.
 - `get_bot_status` when automation ownership matters.
+- `list_call_logs` and `get_call_transcript` when a call is part of the history being reviewed.
 - `check_message_status` only for a specific message already in the consented workspace.
 - `lookup_imessage` only for cached or observed capability. Never request or imply a live probe.
 

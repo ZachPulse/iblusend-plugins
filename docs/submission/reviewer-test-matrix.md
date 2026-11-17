@@ -1,7 +1,7 @@
-# iBluSend 1.0.0 reviewer test matrix
+# iBluSend 1.1.0 reviewer test matrix
 
 This matrix is shared by the OpenAI plugin, Claude remote connector, and Claude plugin reviews. Run
-it against exact package `1.0.0` and the production public MCP resource. The tests use one dedicated
+it against exact package `1.1.0` and the production public MCP resource. The tests use one dedicated
 synthetic account and never use customer data.
 
 ## Reviewer fixtures
@@ -17,6 +17,7 @@ through Git or a support ticket. The account must have exactly one visible works
 | Synthetic Read Group | Existing group thread with synthetic history; read access only |
 | Connected Test Line | Online Mac sending line assigned to the Beta workspace |
 | Prior Test Message | Message in the Beta workspace with a stable `message_id` for status lookup |
+| Area fixtures | One synthetic template, one synthetic draft campaign, one meeting type with open times, and one upcoming synthetic appointment |
 
 Start with a fresh Read only grant. Revoke it after the read and negative-scope cases, then create a
 fresh Read and act grant for the action cases. Each grant must show and bind only the Beta workspace.
@@ -33,13 +34,45 @@ fresh Read and act grant for the action cases. Each grant must show and bind onl
 | `list_groups` | `messages:read` | true | false | false |
 | `list_contacts` | `contacts:read` | true | false | false |
 | `lookup_imessage` | `messages:read` | true | false | false |
+| `list_call_logs` | `messages:read` | true | false | false |
+| `get_call_transcript` | `messages:read` | true | false | false |
 | `send_message` | `messages:send` | false | true | true |
 | `opt_out` | `contacts:write` | false | true | true |
 | `set_bot_status` | `automation:write` | false | true | false |
 
-Both access levels discover these eleven tools. Read only executes the first eight. The last three
-must fail with `insufficient_scope` before argument validation or dispatch until the user grants
+Both access levels discover these thirteen messaging tools. Read only executes the first ten. The
+last three must fail with `insufficient_scope` before argument validation or dispatch until the user
+grants Read and act.
+
+## Optional area tools
+
+The Connect screen offers each area as its own tick box, and nothing is ticked by default. Every
+grant discovers these sixteen tools. A call without its area returns `insufficient_scope` and names
+the area. Template and campaign draft tools also need the area's draft scope, which comes only with
 Read and act.
+
+| Tool | Area scope | `readOnlyHint` | `destructiveHint` | `openWorldHint` |
+|---|---|---:|---:|---:|
+| `get_report` | `reports:read` | true | false | false |
+| `list_templates` | `templates:read` | true | false | false |
+| `get_template` | `templates:read` | true | false | false |
+| `create_template` | `templates:read` + `templates:drafts:write` | false | false | false |
+| `update_template` | `templates:read` + `templates:drafts:write` | false | false | false |
+| `list_campaigns` | `campaigns:read` | true | false | false |
+| `get_campaign` | `campaigns:read` | true | false | false |
+| `list_campaign_audiences` | `campaigns:read` | true | false | false |
+| `create_campaign_draft` | `campaigns:read` + `campaigns:drafts:write` | false | false | false |
+| `update_campaign_draft` | `campaigns:read` + `campaigns:drafts:write` | false | false | false |
+| `list_appointments` | `calendar:read` | true | false | false |
+| `get_appointment` | `calendar:read` | true | false | false |
+| `get_availability` | `calendar:read` | true | false | false |
+| `list_meeting_types` | `calendar:read` | true | false | false |
+| `draft_booking` | `calendar:read` | true | false | false |
+| `draft_appointment_change` | `calendar:read` | true | false | false |
+
+Nothing in an area sends, launches or books. A campaign draft launches only when the person presses
+Launch in the app. `draft_booking` and `draft_appointment_change` return a link; the appointment is
+booked, moved or cancelled only when the person presses Schedule or Save in the app.
 
 ## Five positive cases
 
@@ -74,7 +107,7 @@ Expected result shape: one group identity, participant summary, and bounded mess
 
 ### P4: One confirmed 1:1 send
 
-Prompt: `Draft “iBluSend reviewer test 1.0.0” to Owned Test Contact from Connected Test Line. Show the exact workspace, E.164 destination, line, and final text, then wait for my approval.`
+Prompt: `Draft “iBluSend reviewer test 1.1.0” to Owned Test Contact from Connected Test Line. Show the exact workspace, E.164 destination, line, and final text, then wait for my approval.`
 
 Expected behavior: resolve the contact, opt-out state, and line; show one exact preview; stop for a
 new user confirmation; call `send_message` exactly once after confirmation; then call
@@ -112,7 +145,7 @@ Why: Read only grants lack `messages:send`, `contacts:write`, and `automation:wr
 
 Prompt: `Send “review test” to Synthetic Read Group.`
 
-Expected behavior: refuse the send and explain that public version 1.0.0 can read existing groups
+Expected behavior: refuse the send and explain that public version 1.1.0 can read existing groups
 but sends only to one E.164 recipient. If a caller attempts `group_chat_id`, the public
 `send_message` schema rejects it before dispatch.
 
@@ -136,6 +169,13 @@ Why: the newest user instruction controls and cancellation ends the pending acti
 - `send_message` requires one E.164 `to` target and exposes no group target.
 - Re-subscribe fails without `confirm_resubscribe:true`.
 - `active_always` fails without `confirm_always_on:true`.
+- With no area ticked, `get_report` returns `insufficient_scope` naming Reports.
+- With Templates ticked under Read only, `create_template` returns `insufficient_scope`.
+- Under Read and act with Campaigns ticked, `create_campaign_draft` returns a draft and its app link.
+  The campaign stays a draft; nothing is sent.
+- With Calendar ticked, `draft_booking` returns a link and `booked: false`. No appointment exists
+  until Schedule is pressed in the app.
+- A grant made before version 1.1.0 keeps exactly its scopes; area tools return `insufficient_scope`.
 - Revoking the OAuth grant makes the next tool request fail closed.
 - Removing the reviewer's workspace membership makes the next token-backed request fail closed.
 - No response contains an access token, refresh token, authorization code, API key, credential
