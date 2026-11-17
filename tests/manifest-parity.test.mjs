@@ -45,7 +45,7 @@ test("OpenAI and Claude manifests share identity, skills, and MCP resource", asy
         url: "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public",
         oauth: {
           clientId: "https://claude.ai/oauth/claude-code-client-metadata",
-          scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write",
+          scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write",
           authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
         },
       },

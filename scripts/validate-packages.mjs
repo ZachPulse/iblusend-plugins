@@ -86,7 +86,19 @@ const ISSUED_OPENAI_APP_IDS = new Map([
 ]);
 const IBLUSEND_CLAUDE_OAUTH = Object.freeze({
   clientId: "https://claude.ai/oauth/claude-code-client-metadata",
-  scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write",
+  // The base read rights, the three act rights, then every optional area in the server's canonical
+  // order. The person still picks Read only or Read and act, and ticks each area, on the Connect screen.
+  scopes: [
+    "workspace:read messages:read contacts:read automation:read",
+    "messages:send contacts:write automation:write",
+    "workflows:read workflows:drafts:write",
+    "reports:read",
+    "templates:read templates:drafts:write",
+    "campaigns:read campaigns:drafts:write",
+    "calendar:read",
+    "bots:read bots:drafts:write",
+    "voice:read voice:drafts:write",
+  ].join(" "),
   authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
 });
 const CODEX_MCP_SERVER_KEYS = new Set(["type", "url"]);
@@ -575,7 +587,7 @@ export async function validatePackageRoot(root) {
         errors.push("iBluSend MCP OAuth clientId is not the approved Claude CIMD document");
       }
       if (server?.oauth?.scopes !== IBLUSEND_CLAUDE_OAUTH.scopes) {
-        errors.push("iBluSend MCP OAuth scopes are not the approved Read-and-act bundle");
+        errors.push("iBluSend MCP OAuth scopes are not the approved request list");
       }
       if (
         server?.oauth?.authServerMetadataUrl !==

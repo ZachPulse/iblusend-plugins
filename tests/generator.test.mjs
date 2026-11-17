@@ -174,7 +174,7 @@ test("iBluSend pins Claude CIMD OAuth while Codex and white-label packages stay 
   ));
   assert.deepEqual(iblusendMcp.mcpServers.iblusend.oauth, {
     clientId: "https://claude.ai/oauth/claude-code-client-metadata",
-    scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write",
+    scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write",
     authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
   });
   assert.deepEqual(iblusendCodex.mcpServers, {
@@ -270,7 +270,7 @@ test("validator rejects a checksum-refreshed change to the canonical Claude OAut
 
   const errors = await validatePackageRoot(output);
   assert.ok(errors.includes("iBluSend MCP OAuth clientId is not the approved Claude CIMD document"));
-  assert.ok(errors.includes("iBluSend MCP OAuth scopes are not the approved Read-and-act bundle"));
+  assert.ok(errors.includes("iBluSend MCP OAuth scopes are not the approved request list"));
   assert.ok(errors.includes("iBluSend MCP OAuth metadata URL is not canonical"));
   assert.equal(errors.some((error) => error.includes("checksum")), false);
 });
