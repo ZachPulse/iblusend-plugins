@@ -66,12 +66,13 @@ test("both marketplace catalogs resolve the same package", async () => {
   assert.equal(codex.plugins[0].policy.authentication, "ON_INSTALL");
 });
 
-test("package has seven shared skills and an issued OpenAI app mapping", async () => {
+test("package has eight shared skills and an issued OpenAI app mapping", async () => {
   const skillNames = [
     "calendar",
     "campaigns",
     "contact-device-compliance",
     "inbox-triage",
+    "invoices",
     "reports",
     "safe-draft-and-send",
     "templates",
