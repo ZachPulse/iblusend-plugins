@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "iblusend": {
+      "type": "http",
+      "url": "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public",
+      "oauth": {
+        "scopes": [
+          "workspace:read",
+          "messages:read",
+          "contacts:read",
+          "automation:read",
+          "messages:send",
+          "contacts:write",
+          "automation:write",
+          "workflows:read",
+          "workflows:drafts:write",
+          "reports:read",
+          "templates:read",
+          "templates:drafts:write",
+          "campaigns:read",
+          "campaigns:drafts:write",
+          "calendar:read",
+          "bots:read",
+          "bots:drafts:write",
+          "voice:read",
+          "voice:drafts:write"
+        ]
+      }
+    }
+  }
+}
