@@ -1,7 +1,7 @@
-# iBluSend 1.1.0 reviewer test matrix
+# iBluSend 1.2.0 reviewer test matrix
 
 This matrix is shared by the OpenAI plugin, Claude remote connector, and Claude plugin reviews. Run
-it against exact package `1.1.0` and the production public MCP resource. The tests use one dedicated
+it against exact package `1.2.0` and the production public MCP resource. The tests use one dedicated
 synthetic account and never use customer data.
 
 ## Reviewer fixtures
@@ -47,8 +47,8 @@ grants Read and act.
 ## Optional area tools
 
 The Connect screen offers each area as its own tick box, and nothing is ticked by default. Every
-grant discovers these sixteen tools. A call without its area returns `insufficient_scope` and names
-the area. Template and campaign draft tools also need the area's draft scope, which comes only with
+grant discovers these twenty tools. A call without its area returns `insufficient_scope` and names
+the area. Template, campaign and invoice draft tools also need the area's draft scope, which comes only with
 Read and act.
 
 | Tool | Area scope | `readOnlyHint` | `destructiveHint` | `openWorldHint` |
@@ -69,10 +69,16 @@ Read and act.
 | `list_meeting_types` | `calendar:read` | true | false | false |
 | `draft_booking` | `calendar:read` | true | false | false |
 | `draft_appointment_change` | `calendar:read` | true | false | false |
+| `list_invoices` | `invoices:read` | true | false | false |
+| `get_invoice` | `invoices:read` | true | false | false |
+| `create_invoice_draft` | `invoices:read` + `invoices:drafts:write` | false | false | false |
+| `update_invoice_draft` | `invoices:read` + `invoices:drafts:write` | false | false | false |
 
-Nothing in an area sends, launches or books. A campaign draft launches only when the person presses
+Nothing in an area sends, launches, books or charges. A campaign draft launches only when the person presses
 Launch in the app. `draft_booking` and `draft_appointment_change` return a link; the appointment is
-booked, moved or cancelled only when the person presses Schedule or Save in the app.
+booked, moved or cancelled only when the person presses Schedule or Save in the app. An invoice draft
+has no number and no pay link; it is sent only when the person presses Send in the app, and the AI
+never takes a payment.
 
 ## Five positive cases
 
@@ -107,7 +113,7 @@ Expected result shape: one group identity, participant summary, and bounded mess
 
 ### P4: One confirmed 1:1 send
 
-Prompt: `Draft “iBluSend reviewer test 1.1.0” to Owned Test Contact from Connected Test Line. Show the exact workspace, E.164 destination, line, and final text, then wait for my approval.`
+Prompt: `Draft “iBluSend reviewer test 1.2.0” to Owned Test Contact from Connected Test Line. Show the exact workspace, E.164 destination, line, and final text, then wait for my approval.`
 
 Expected behavior: resolve the contact, opt-out state, and line; show one exact preview; stop for a
 new user confirmation; call `send_message` exactly once after confirmation; then call
@@ -145,7 +151,7 @@ Why: Read only grants lack `messages:send`, `contacts:write`, and `automation:wr
 
 Prompt: `Send “review test” to Synthetic Read Group.`
 
-Expected behavior: refuse the send and explain that public version 1.1.0 can read existing groups
+Expected behavior: refuse the send and explain that public version 1.2.0 can read existing groups
 but sends only to one E.164 recipient. If a caller attempts `group_chat_id`, the public
 `send_message` schema rejects it before dispatch.
 
@@ -176,6 +182,10 @@ Why: the newest user instruction controls and cancellation ends the pending acti
 - With Calendar ticked, `draft_booking` returns a link and `booked: false`. No appointment exists
   until Schedule is pressed in the app.
 - A grant made before version 1.1.0 keeps exactly its scopes; area tools return `insufficient_scope`.
+- With Invoices ticked under Read only, `create_invoice_draft` returns `insufficient_scope`.
+- Under Read and act with Invoices ticked, `create_invoice_draft` returns a draft with no number and
+  its app link. Nothing is sent and no one is charged.
+- A grant made before version 1.2.0 has no Invoices area; invoice tools return `insufficient_scope`.
 - Revoking the OAuth grant makes the next tool request fail closed.
 - Removing the reviewer's workspace membership makes the next token-backed request fail closed.
 - No response contains an access token, refresh token, authorization code, API key, credential

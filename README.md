@@ -19,8 +19,8 @@ engine, does not bypass iBluSend compliance controls, and does not ship credenti
 
 ## Repository status
 
-Version `1.1.0` is live on `main` (the server release with the optional areas went live
-2026-11-17). It has **not** been submitted to or published in Anthropic's or OpenAI's provider
+Version `1.2.0` adds the Invoices area (the server release with invoices on the sign-in path must
+be live before this merges; the optional areas went live 2026-11-17). It has **not** been submitted to or published in Anthropic's or OpenAI's provider
 directory. The Grok Build copy (`plugins/iblusend-grok`) is listed through a pull request to
 `xai-org/plugin-marketplace`. The iBluSend package carries the OpenAI app mapping proven in
 the private ChatGPT developer-mode beta; white-label output omits `.app.json` unless that brand has

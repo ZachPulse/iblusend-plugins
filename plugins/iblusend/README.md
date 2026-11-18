@@ -38,6 +38,7 @@ area is its own OAuth scope; a draft scope comes only with Read and act.
 | Templates | `templates:read` | `templates:drafts:write` | `list_templates`, `get_template`, `create_template`, `update_template` |
 | Campaigns | `campaigns:read` | `campaigns:drafts:write` | `list_campaigns`, `get_campaign`, `list_campaign_audiences`, `create_campaign_draft`, `update_campaign_draft` |
 | Calendar | `calendar:read` | none | `list_appointments`, `get_appointment`, `get_availability`, `list_meeting_types`, `draft_booking`, `draft_appointment_change` |
+| Invoices | `invoices:read` | `invoices:drafts:write` | `list_invoices`, `get_invoice`, `create_invoice_draft`, `update_invoice_draft` |
 
 Every grant discovers these sixteen area tools. A call without its area returns
 `insufficient_scope`; the person reconnects and ticks that area. Connections made earlier keep

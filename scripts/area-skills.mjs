@@ -1,9 +1,9 @@
-// Optional sign-in areas: reports, templates, campaigns and calendar.
+// Optional sign-in areas: reports, templates, campaigns, calendar and invoices.
 //
 // The person ticks each area on the Connect screen. Each area is its own OAuth scope, plus a
 // draft scope for areas that save drafts (granted only with Read and act). The server serves
 // every area tool to every OAuth grant and answers `insufficient_scope` when the area is missing.
-// Nothing in an area sends, launches or books.
+// Nothing in an area sends, launches, books or charges.
 
 export const PLUGIN_AREAS = Object.freeze([
   Object.freeze({
@@ -44,6 +44,14 @@ export const PLUGIN_AREAS = Object.freeze([
       "draft_appointment_change",
     ]),
     draftTools: Object.freeze([]),
+  }),
+  Object.freeze({
+    skill: "invoices",
+    label: "Invoices",
+    readScope: "invoices:read",
+    draftScope: "invoices:drafts:write",
+    readTools: Object.freeze(["list_invoices", "get_invoice"]),
+    draftTools: Object.freeze(["create_invoice_draft", "update_invoice_draft"]),
   }),
 ]);
 
@@ -233,11 +241,59 @@ the person separately asks, and then use the safe draft-and-send workflow.
 `;
 }
 
+
+function invoicesSkill(brand) {
+  const area = PLUGIN_AREAS[4];
+  return `${skillFrontmatter(
+    area.skill,
+    `Read ${brand.package.displayName} invoices and what customers owe, and save an invoice draft after the person approves it. Only the person can send it, in the app; nothing is charged.`,
+  )}
+# Invoices
+
+Use this to answer "who owes me money?" or to prepare an invoice. You cannot send an invoice,
+give it a number, void it or take a payment, and you never see a pay link. The person opens the
+draft and presses Send in the app.
+
+${renderAreaAccessSection(area)}## Tools
+
+- ${code("list_invoices")} lists invoices with each customer's total, paid, balance, due date and
+  status. ${code("totals")} matches the Invoices page cards: drafted, still due, overdue, received.
+  Filter by ${code("status")}, ${code("contact_id")} or ${code("search")}.
+- ${code("get_invoice")} reads one invoice: lines, notes, terms and what is left. A draft carries
+  ${code("send_check")}, the things that would still stop the Send button.
+- ${code("create_invoice_draft")} saves a new draft in US dollars, one payment due on ${code("due_date")}.
+- ${code("update_invoice_draft")} changes a draft. Send only the fields to change; ${code("items")}
+  replaces every line.
+
+## Draft workflow
+
+1. Resolve the customer with ${code("list_contacts")}. If two contacts could match, ask.
+2. Write each line as a name, a quantity and a price in cents (${code("unit_cents")}). Add
+   ${code("tax_rate")} as a percent and ${code("discount_cents")} only if the person asked.
+3. Show the customer, every line, the due date and the total the app will work out, and ask before
+   saving. If the person says stop or changes the request, save nothing and show a new version.
+4. Call ${code("create_invoice_draft")} or ${code("update_invoice_draft")} once.
+5. Read ${code("send_check")}. If it lists something missing (a customer, a due date, a price), say so.
+6. Give the person ${code("app_url")} (or ${code("app_path")} when ${code("app_url")} is empty) and say
+   plainly: this is a draft, nothing was sent and no one was charged; they check it and press Send.
+
+## Limits
+
+- ${code("created: false")} means the same draft was saved minutes ago. Say so; do not make a copy.
+- ${code("invoice_not_draft")} means it was already sent. It cannot change here.
+- ${code("invoice_read_only")} means it has a split payment schedule; the person edits it in the app.
+- ${code("invoice_changed")} means someone changed it in the app meanwhile. Read it again first.
+- ${code("invoice_owner_only")} means this login is an agency's client: it can read invoices, not draft them.
+- Amounts are in cents. Say them as dollars. Never say an invoice was sent, paid or charged.
+`;
+}
+
 const AREA_SKILL_RENDERERS = Object.freeze({
   reports: reportsSkill,
   templates: templatesSkill,
   campaigns: campaignsSkill,
   calendar: calendarSkill,
+  invoices: invoicesSkill,
 });
 
 export function renderAreaSkill(brand, skillName) {
