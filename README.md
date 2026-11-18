@@ -19,9 +19,10 @@ engine, does not bypass iBluSend compliance controls, and does not ship credenti
 
 ## Repository status
 
-Version `1.1.0` is the public-review release candidate. It needs the iBluSend server release that
-adds the optional areas and lets the plug-in apps request them; do not publish it before that is live. It has **not** been submitted to or
-published in a provider directory. The iBluSend package carries the OpenAI app mapping proven in
+Version `1.1.0` is live on `main` (the server release with the optional areas went live
+2026-11-17). It has **not** been submitted to or published in Anthropic's or OpenAI's provider
+directory. The Grok Build copy (`plugins/iblusend-grok`) is listed through a pull request to
+`xai-org/plugin-marketplace`. The iBluSend package carries the OpenAI app mapping proven in
 the private ChatGPT developer-mode beta; white-label output omits `.app.json` unless that brand has
 its own registered OpenAI app.
 
@@ -34,6 +35,9 @@ plugins/iblusend/                     Generated installable plugin
   .claude-plugin/plugin.json          Claude manifest
   .mcp.json                           Shared remote MCP connection
   skills/                             Provider-neutral workflows
+plugins/iblusend-grok/                Generated Grok Build copy: same skills and server
+  .grok-plugin/plugin.json            Grok manifest
+  .mcp.json                           Scopes as a list, no client id (Grok registers its own)
 .agents/plugins/marketplace.json      Codex repository marketplace
 .claude-plugin/marketplace.json       Claude repository marketplace
 brands/                               Validated brand documents

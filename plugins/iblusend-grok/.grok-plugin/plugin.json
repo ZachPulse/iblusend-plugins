@@ -1,0 +1,21 @@
+{
+  "name": "iblusend",
+  "version": "1.1.0",
+  "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
+  "author": {
+    "name": "iBluSend",
+    "url": "https://iblusend.com"
+  },
+  "homepage": "https://iblusend.com/features/ai-assistants",
+  "repository": "https://github.com/ZachPulse/iblusend-plugins",
+  "license": "MIT",
+  "keywords": [
+    "iblusend",
+    "iblusend imessage",
+    "iblusend sms",
+    "iblusend messaging",
+    "iblusend contacts",
+    "iblusend inbox",
+    "iblusend crm"
+  ]
+}

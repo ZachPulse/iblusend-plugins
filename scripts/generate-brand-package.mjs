@@ -857,6 +857,66 @@ function mcpManifest(brand) {
   };
 }
 
+// Grok Build reads the same skills and MCP server, but its .mcp.json differs from Claude Code's:
+// `oauth.scopes` must be a list (Grok drops a server whose scopes are one string), and there is
+// no clientId, because Claude Code's client metadata URL only redirects back to Claude. Grok
+// registers its own client at the server's registration endpoint.
+function grokManifest(brand) {
+  return {
+    name: brand.package.slug,
+    version: brand.package.version,
+    description: brand.package.description,
+    author: { name: brand.publisher.name, url: brand.publisher.url },
+    homepage: brand.legal.homepage,
+    repository: brand.publisher.repository,
+    license: brand.legal.license,
+    keywords: [brand.package.slug, ...brand.package.keywords.map((word) => `${brand.package.slug} ${word}`)],
+  };
+}
+
+function grokMcpManifest(brand) {
+  const scopes = brand.mcp.oauth?.scopes?.split(/\s+/).filter(Boolean) ?? [];
+  return {
+    mcpServers: {
+      [brand.mcp.serverName]: {
+        type: "http",
+        url: brand.mcp.resourceUrl,
+        ...(scopes.length ? { oauth: { scopes } } : {}),
+      },
+    },
+  };
+}
+
+function grokReadme(brand) {
+  return `# ${brand.package.displayName} for Grok Build
+
+${brand.package.description}
+
+This is the Grok Build copy of the \`${brand.package.slug}\` plug-in. It carries the same skills and
+the same MCP server as the Claude Code and Codex package in \`plugins/${brand.package.slug}\`. Only the
+manifest (\`.grok-plugin/plugin.json\`) and the sign-in settings in \`.mcp.json\` differ.
+
+## Sign-in
+
+The first time a tool runs, Grok opens ${brand.package.displayName}'s Connect screen in your browser.
+Pick one workspace and the areas you want your AI to use. Nothing is ticked for you. You can
+reconnect later to add an area.
+
+## Safety
+
+Nothing sends, launches or books without you. A text needs your confirmation in chat first. A
+campaign launches only when you press Launch in ${brand.package.displayName}. A booking, move or
+cancel happens only when you press Schedule or Save there.
+
+## Links
+
+- Help: ${brand.legal.documentation ?? brand.legal.homepage}
+- Support: ${brand.legal.support}
+- Privacy: ${brand.legal.privacy}
+- Terms: ${brand.legal.terms}
+`;
+}
+
 function codexMarketplace(brand) {
   return {
     name: brand.marketplaces.codex.name,
@@ -1046,6 +1106,17 @@ export function renderBrandPackage(
     );
   });
   addText(`${pluginPrefix}/CHECKSUMS.sha256`, checksumFile(files, pluginPrefix));
+
+  const grokPrefix = `plugins/${slug}-grok`;
+  addJson(`${grokPrefix}/.grok-plugin/plugin.json`, grokManifest(brand));
+  addJson(`${grokPrefix}/.mcp.json`, grokMcpManifest(brand));
+  addText(`${grokPrefix}/README.md`, grokReadme(brand));
+  for (const [relativePath, contents] of [...files.entries()]) {
+    if (relativePath.startsWith(`${pluginPrefix}/skills/`) || relativePath === `${pluginPrefix}/assets/icon.png`) {
+      files.set(`${grokPrefix}/${relativePath.slice(pluginPrefix.length + 1)}`, contents);
+    }
+  }
+  addText(`${grokPrefix}/CHECKSUMS.sha256`, checksumFile(files, grokPrefix));
   return files;
 }
 

@@ -129,3 +129,38 @@ test("checked-in provider copy preserves group reads and the thirteen-tool scope
   const claudeMarketplace = await loadJson(".claude-plugin/marketplace.json");
   assert.doesNotMatch(claudeMarketplace.plugins[0].description, /manage contacts/i);
 });
+
+test("Grok Build copy loads in Grok: scopes are a list, no Claude client id, same skills and server", async () => {
+  const claude = await loadJson("plugins/iblusend/.claude-plugin/plugin.json");
+  const claudeMcp = await loadJson("plugins/iblusend/.mcp.json");
+  const grok = await loadJson("plugins/iblusend-grok/.grok-plugin/plugin.json");
+  const grokMcp = await loadJson("plugins/iblusend-grok/.mcp.json");
+
+  for (const key of ["name", "version", "description", "homepage", "repository", "license"]) {
+    assert.deepEqual(grok[key], claude[key], `Grok manifest ${key} matches Claude`);
+  }
+  for (const keyword of grok.keywords) {
+    assert.ok(keyword === "iblusend" || keyword.startsWith("iblusend "), `brand-scoped keyword: ${keyword}`);
+  }
+
+  const claudeServer = claudeMcp.mcpServers.iblusend;
+  const grokServer = grokMcp.mcpServers.iblusend;
+  assert.equal(grokServer.type, "http");
+  assert.equal(grokServer.url, claudeServer.url);
+  // Grok 1.0.88 drops the whole server ("invalid type: string, expected a sequence") when
+  // oauth.scopes is one string, which is the form Claude Code takes.
+  assert.ok(Array.isArray(grokServer.oauth.scopes), "Grok oauth.scopes must be a list");
+  assert.deepEqual(grokServer.oauth.scopes, claudeServer.oauth.scopes.split(" "));
+  // Claude Code's client metadata only redirects to Claude; Grok registers its own client.
+  assert.deepEqual(Object.keys(grokServer.oauth), ["scopes"]);
+
+  const skills = async (root) => (await readdir(path.join(ROOT, root, "skills"))).sort();
+  assert.deepEqual(await skills("plugins/iblusend-grok"), await skills("plugins/iblusend"));
+  for (const name of await skills("plugins/iblusend")) {
+    assert.equal(
+      await readFile(path.join(ROOT, "plugins/iblusend-grok/skills", name, "SKILL.md"), "utf8"),
+      await readFile(path.join(ROOT, "plugins/iblusend/skills", name, "SKILL.md"), "utf8"),
+      `skill ${name} is identical`,
+    );
+  }
+});
