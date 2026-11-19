@@ -1,26 +1,31 @@
 # iBluSend Plugins
 
 Official, shared plugin packaging for iBluSend on OpenAI and Claude. One package connects both
-providers to the same workspace-bound MCP resource and supplies seven provider-neutral workflows:
+providers to the same workspace-bound MCP resource and supplies eleven provider-neutral workflows:
 
 - inbox triage;
 - safe draft and send;
 - contact, device, and compliance operations; and
-- one workflow for each optional area: reports, templates, campaigns, and calendar.
+- one workflow for each optional area: reports, templates, campaigns, calendar, invoices, contact
+  edits, iMessage extras, and calendar booking.
 
 Every OAuth grant discovers thirteen messaging tools: ten read tools and three action tools that
 need Read and act. On the Connect screen the person can also tick optional areas (reports,
-templates, campaigns, calendar, and the owner-only workflows, BluBot, and voice agents). Each area
-is its own OAuth scope; a call without it returns `insufficient_scope`. Nothing in an area sends,
-launches, or books: drafts and booking links wait for the person to press the button in the app.
+templates, campaigns, calendar, invoices, and the owner-only workflows, BluBot, and voice agents).
+Each area is its own OAuth scope; a call without it returns `insufficient_scope`. Nothing in a read
+or draft area sends, launches, books, or charges: drafts and booking links wait for the person to
+press the button in the app. Three areas act under Read and act: contact edits, iMessage extras, and
+calendar booking. They reach only contacts the person approves under Manage actions, and a booking,
+move, or cancel waits for a preview and a confirm code.
 
 The public package intentionally exposes the curated public-v1 contract. It is not a bulk campaign
 engine, does not bypass iBluSend compliance controls, and does not ship credentials.
 
 ## Repository status
 
-Version `1.2.0` adds the Invoices area (the server release with invoices on the sign-in path must
-be live before this merges; the optional areas went live 2026-11-17). It has **not** been submitted to or published in Anthropic's or OpenAI's provider
+Version `1.3.0` adds the contact edits, iMessage extras, and calendar booking skills, and asks for
+every sign-in area the server offers, so Claude Code and Grok can offer Invoices and the three new
+areas on the Connect screen (all of them went live on the server 2026-11-19). It has **not** been submitted to or published in Anthropic's or OpenAI's provider
 directory. The Grok Build copy (`plugins/iblusend-grok`) is listed through a pull request to
 `xai-org/plugin-marketplace`. The iBluSend package carries the OpenAI app mapping proven in
 the private ChatGPT developer-mode beta; white-label output omits `.app.json` unless that brand has

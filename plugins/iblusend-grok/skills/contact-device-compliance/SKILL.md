@@ -12,8 +12,9 @@ workspace.
 
 - Work on exactly one workspace and one contact or one automation setting per change.
 - Start read-only. Resolve the target and show current state before proposing a mutation.
-- Contact creation and profile-field updates are not available in this public workflow. Never
-  invent a hidden write path, bulk importer, or customer-data export.
+- To add a contact or edit its details, use the `contact-edits` workflow; it needs Contact edits
+  ticked on the Connect screen. Never invent a hidden write path, bulk importer, or customer-data
+  export.
 - Never treat a phone number as belonging to a person unless the connected workspace data supports
   that association.
 - Device state is a reported snapshot. Offline/online does not guarantee that a future message will

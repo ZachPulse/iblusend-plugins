@@ -45,8 +45,9 @@ summarize, or prepare is not permission to send.
 
 - One-to-one: text, supported media, or a supported effect.
 - Group conversations remain available to read, but every group-send target is unavailable.
-- No group sends, group creation, reactions, voice memos, typing indicators, or native mark-read
-  operation.
+- No group sends or group creation.
+- Tapbacks, typing bubbles, read receipts and voice memos need iMessage extras ticked on the
+  Connect screen; use the `imessage-extras` workflow for them.
 - Respect platform pacing, plan, device, and compliance enforcement. Never suggest a bypass.
 
 ## Workflow

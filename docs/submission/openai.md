@@ -1,6 +1,6 @@
 # OpenAI universal plugin submission packet
 
-This packet is for the initial public review of iBluSend `1.2.0`. The submission serves both
+This packet is for the initial public review of iBluSend `1.3.0`. The submission serves both
 ChatGPT and Codex through the universal Plugins Directory. Preparing this file does not authorize
 creating a portal draft, submitting it for review, publishing it, or enabling iBluSend's OpenAI
 customer flag.
@@ -58,7 +58,7 @@ Starter prompts:
 2. `Draft a reply for one contact, then wait for my approval before sending.`
 3. `Check this contact's opt-out status and show available sending devices.`
 
-Upload the seven final skill directories from `plugins/iblusend/skills/`. Submit the Universal MCP
+Upload the eleven final skill directories from `plugins/iblusend/skills/`. Submit the Universal MCP
 URL directly and let the portal scan it. Do not enter the private-beta `asdk_app_...` identifier as
 an existing integration reference. The `.app.json` mapping remains useful for local developer
 installation, but it is not the public MCP submission target.
@@ -68,9 +68,11 @@ installation, but it is not the public MCP submission target.
 - OAuth discovery exposes exactly thirteen messaging tools for both access levels. Read-only grants can
   use ten read tools; the three action tools return `insufficient_scope` before validation
   or dispatch when the grant lacks write scopes.
-- OAuth discovery also exposes sixteen optional area tools (reports, templates, campaigns,
-  calendar). Each runs only when the person ticked its area on the Connect screen; template and
-  campaign drafts also need Read and act. None of them sends, launches or books.
+- OAuth discovery also exposes twenty-nine optional area tools (reports, templates, campaigns,
+  calendar, invoices, contact edits, iMessage extras, calendar booking). Each runs only when the
+  person ticked its area on the Connect screen; drafts and the three act areas also need Read and
+  act. No read or draft area tool sends, launches, books or charges. The act areas reach only
+  contacts the person approves, and a booking waits for a preview and a confirm code.
 - Every tool has a title plus accurate `readOnlyHint`, `openWorldHint`, and `destructiveHint`
   values. `send_message` is destructive, open-world, and non-idempotent at the tool contract.
 - The server returns only workspace-bound product data. It does not return bearer tokens, OAuth
@@ -91,22 +93,23 @@ served token requires a separate platform change and deployment gate.
 
 ## Review tests and release notes
 
-Use [reviewer-test-matrix.md](reviewer-test-matrix.md). It contains the exact thirteen messaging tools, the sixteen area tools,
+Use [reviewer-test-matrix.md](reviewer-test-matrix.md). It contains the exact thirteen messaging tools, the twenty-nine area tools,
 five positive cases, three negative cases, fixture requirements, expected result shapes, and reset
 steps.
 
 Release notes:
 
-> Initial public submission of iBluSend 1.2.0. The plugin connects one consented iBluSend workspace
-> to ten read tools and three separately scoped action tools, plus optional reports, templates,
-> campaigns and calendar areas the person ticks on the Connect screen. It includes guarded inbox
+> Initial public submission of iBluSend 1.3.0. The plugin connects one consented iBluSend workspace
+> to ten read tools and three separately scoped action tools, plus optional areas the person ticks
+> on the Connect screen: reports, templates, campaigns, calendar, invoices, contact edits, iMessage
+> extras and calendar booking. It includes guarded inbox
 > triage, one-to-one draft and send, contact/device compliance, and one workflow per area. Area
-> tools save drafts or return links; the person launches or books in the app. Private pilots verified OAuth,
+> tools save drafts or return links, and act-area tools reach only contacts the person approves. Private pilots verified OAuth,
 > workspace isolation, scope enforcement, stop control, revocation, and one confirmed test delivery.
 
 ## Final gate
 
 Before selecting **Submit for Review**, rerun the package validators, complete every case in the
-shared test matrix against exact version `1.2.0`, verify all public URLs, confirm the secure reviewer
+shared test matrix against exact version `1.3.0`, verify all public URLs, confirm the secure reviewer
 credentials, and record the exact Git commit. Submission, reviewer-requested behavior changes,
 publication, and the OpenAI customer flag each remain separate owner approvals.

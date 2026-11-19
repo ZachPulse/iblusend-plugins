@@ -706,8 +706,9 @@ workspace.
 
 - Work on exactly one workspace and one contact or one automation setting per change.
 - Start read-only. Resolve the target and show current state before proposing a mutation.
-- Contact creation and profile-field updates are not available in this public workflow. Never
-  invent a hidden write path, bulk importer, or customer-data export.
+- To add a contact or edit its details, use the \`contact-edits\` workflow; it needs Contact edits
+  ticked on the Connect screen. Never invent a hidden write path, bulk importer, or customer-data
+  export.
 - Never treat a phone number as belonging to a person unless the connected workspace data supports
   that association.
 - Device state is a reported snapshot. Offline/online does not guarantee that a future message will
@@ -904,9 +905,12 @@ reconnect later to add an area.
 
 ## Safety
 
-Nothing sends, launches or books without you. A text needs your confirmation in chat first. A
-campaign launches only when you press Launch in ${brand.package.displayName}. A booking, move or
-cancel happens only when you press Schedule or Save there.
+Nothing sends, launches, books or charges without you. A text or a voice memo needs your yes in
+chat first. A campaign launches only when you press Launch in ${brand.package.displayName}, and an
+invoice goes out only when you press Send there. If you tick Calendar booking, a booking, move or
+cancel happens only after you say yes to its preview; otherwise you press Schedule or Save in the
+app. Contact edits, iMessage extras and booking reach only the contacts you approve under Manage
+actions.
 
 ## Links
 
@@ -970,9 +974,19 @@ function claudeMarketplace(brand) {
 function areaTableRows() {
   return PLUGIN_AREAS.map((area) => {
     const tools = areaTools(area).map((tool) => `\`${tool}\``).join(", ");
-    const draft = area.draftScope ? `\`${area.draftScope}\`` : "none";
-    return `| ${area.label} | \`${area.readScope}\` | ${draft} | ${tools} |`;
+    const read = area.readScope ? `\`${area.readScope}\`` : "none";
+    const write = area.draftScope ?? area.actScope;
+    return `| ${area.label} | ${read} | ${write ? `\`${write}\`` : "none"} | ${tools} |`;
   }).join("\n");
+}
+
+const AREA_TOOL_COUNT_WORDS = Object.freeze({ 29: "twenty-nine" });
+
+function areaToolCountWord() {
+  const count = PLUGIN_AREAS.flatMap(areaTools).length;
+  const word = AREA_TOOL_COUNT_WORDS[count];
+  if (!word) throw new Error(`Name the area tool count ${count} in AREA_TOOL_COUNT_WORDS`);
+  return word;
 }
 
 function packageReadme(brand) {
@@ -996,6 +1010,10 @@ Authorization header to this package.
 - \`templates\`: read message templates and save a template the person approves.
 - \`campaigns\`: read campaigns and save a draft the person launches in the app.
 - \`calendar\`: read appointments and open times, and prepare booking links the person confirms.
+- \`invoices\`: read invoices and what is owed, and save a draft the person sends in the app.
+- \`contact-edits\`: add or edit one contact; tags and custom fields only on approved contacts.
+- \`imessage-extras\`: tapbacks, typing bubbles, read receipts and voice memos to approved contacts.
+- \`calendar-booking\`: book, move or cancel an appointment in chat after a preview and a yes.
 
 ## Messaging tools
 
@@ -1008,18 +1026,24 @@ remain readable. This plugin is not a bulk sender.
 ## Optional areas
 
 On the Connect screen the person can also tick optional areas. Nothing is ticked for them. Each
-area is its own OAuth scope; a draft scope comes only with Read and act.
+area is its own OAuth scope; a draft or act scope comes only with Read and act.
 
-| Area | Read scope | Draft scope | Tools |
+| Area | Read scope | Draft or act scope | Tools |
 |---|---|---|---|
 ${areaTableRows()}
 
-Every grant discovers these sixteen area tools. A call without its area returns
+Every grant discovers these ${areaToolCountWord()} area tools. A call without its area returns
 \`insufficient_scope\`; the person reconnects and ticks that area. Connections made earlier keep
-what they granted. Nothing in an area sends, launches or books: a campaign launches only when the
-person presses Launch in the app, and a booking or change happens only when they press Schedule or
-Save. Workflows, bots and voice agents are further optional areas; their tools also need the
-workspace owner and that feature turned on.
+what they granted. Nothing in the reports, templates, campaigns, calendar or invoices areas sends,
+launches, books or charges: a campaign launches only when the person presses Launch in the app, a
+booking link waits for Schedule or Save, and an invoice waits for Send.
+
+Contact edits, iMessage extras and calendar booking act. Each needs Read and act, and anything that
+reaches a contact works only for contacts the person approved under Manage actions in the app,
+never a group. A voice memo, a booking, a move and a cancel each wait for the person's yes to an
+exact preview; a booking takes a second call with the preview's confirm code. Workflows, bots and
+voice agents are further optional areas; their tools also need the workspace owner and that
+feature turned on.
 `;
 }
 
@@ -1031,9 +1055,10 @@ function submissionChecklist(brand) {
 - [ ] MCP resource is exactly \`${brand.mcp.resourceUrl}\`.
 - [ ] OAuth discovery, PKCE, workspace consent, scopes, refresh, and revocation pass served tests.
 - [ ] OAuth discovery exposes the thirteen messaging tools for both access levels; Read-only action calls return \`insufficient_scope\` before validation or dispatch.
-- [ ] OAuth discovery exposes the sixteen area tools; a call without its ticked area (or, for a draft tool, without Read and act) returns \`insufficient_scope\`.
+- [ ] OAuth discovery exposes the ${areaToolCountWord()} area tools; a call without its ticked area (or, for a draft or act tool, without Read and act) returns \`insufficient_scope\`.
 - [ ] The MCP server accepts every scope this package requests, and the Connect screen leaves every optional area unticked.
-- [ ] No area tool sends, launches or books: campaign drafts need Launch in the app, booking links need Schedule or Save.
+- [ ] No read or draft area tool sends, launches, books or charges: campaign drafts need Launch in the app, booking links need Schedule or Save, invoice drafts need Send.
+- [ ] Contact edits, iMessage extras and calendar booking reach only contacts approved under Manage actions; a booking or change needs a preview and its confirm code.
 - [ ] Send is marked consequential and provider approval remains enabled.
 - [ ] Support, privacy, and terms URLs are publicly reachable.
 - [ ] Screenshots match the current behavior and contain no customer data.

@@ -1,6 +1,6 @@
 # Claude Connectors Directory submission packet
 
-This packet is for the iBluSend `1.2.0` remote MCP connector. It covers the connector shared by
+This packet is for the iBluSend `1.3.0` remote MCP connector. It covers the connector shared by
 Claude.ai, Claude Desktop, Claude mobile, Claude Code, and Cowork. It does not authorize creating a
 directory draft, submitting it, publishing it, or enabling iBluSend's Claude customer flag.
 
@@ -87,7 +87,7 @@ The canonical PNG fallback must retain SHA-256
 
 ## Tools and reviewer access
 
-Use [reviewer-test-matrix.md](reviewer-test-matrix.md) for the exact thirteen messaging tools, sixteen area tools, annotations,
+Use [reviewer-test-matrix.md](reviewer-test-matrix.md) for the exact thirteen messaging tools, twenty-nine area tools, annotations,
 fixtures, five positive cases, three negative cases, and reset procedure. Exercise every tool in
 MCP Inspector and again as a Claude custom connector before submission.
 
@@ -99,9 +99,10 @@ step for a reviewer unfamiliar with iBluSend.
 
 Release notes:
 
-> Initial directory submission of iBluSend 1.2.0. The remote connector binds each OAuth grant to
+> Initial directory submission of iBluSend 1.3.0. The remote connector binds each OAuth grant to
 > one iBluSend workspace and exposes ten read tools plus three separately scoped action tools.
-> Optional reports, templates, campaigns and calendar areas run only when the person ticks them.
+> Optional reports, templates, campaigns, calendar, invoices, contact edits, iMessage extras and
+> calendar booking areas run only when the person ticks them.
 > Private Claude pilots verified OAuth, workspace isolation, scope enforcement, stop control,
 > revocation, and one confirmed test delivery to an owner-controlled recipient.
 

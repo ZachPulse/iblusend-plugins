@@ -5,9 +5,12 @@ description: "Read iBluSend appointments, meeting types and open times, and prep
 
 # Calendar
 
-Use this to read the calendar or to get a booking ready. You book, move and cancel nothing. The
-person opens the link you give them and presses Schedule or Save in the app; only then does the
-guest hear about it.
+Use this to read the calendar or to get a booking ready. You book, move and cancel nothing with
+these tools. The person opens the link you give them and presses Schedule or Save in the app; only
+then does the guest hear about it.
+
+If the person also ticked Calendar booking and wants it done in the chat, use the
+`calendar-booking` skill instead of a link.
 
 ## Access
 
@@ -44,5 +47,5 @@ guest hear about it.
 2. Call `draft_appointment_change` with `action` move (and `new_starts_at`) or cancel.
 3. Share the link and `next_step`. Say nothing has changed until they press Save.
 
-Never say an appointment was booked, moved or cancelled. Never message the guest about it unless
-the person separately asks, and then use the safe draft-and-send workflow.
+Never say an appointment was booked, moved or cancelled because you shared a link. Never message
+the guest about it unless the person separately asks, and then use the safe draft-and-send workflow.
