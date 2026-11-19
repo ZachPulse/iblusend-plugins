@@ -30,8 +30,8 @@ test("release candidate version and public URLs stay aligned", async () => {
     claudeMarketplace.version,
     claudeMarketplace.plugins[0].version,
   ];
-  assert.deepEqual(new Set(versions), new Set(["1.2.0"]));
-  assert.match(checklist, /Package version is `1\.2\.0` everywhere/);
+  assert.deepEqual(new Set(versions), new Set(["1.3.0"]));
+  assert.match(checklist, /Package version is `1\.3\.0` everywhere/);
 
   assert.equal(brand.legal.homepage, "https://iblusend.com/features/ai-assistants");
   assert.equal(brand.legal.terms, "https://iblusend.com/ai-usage-terms");
@@ -40,7 +40,7 @@ test("release candidate version and public URLs stay aligned", async () => {
   assert.equal(codex.interface.termsOfServiceURL, brand.legal.terms);
 });
 
-test("shared reviewer matrix pins five positive, three negative, thirteen messaging and twenty area tools", async () => {
+test("shared reviewer matrix pins five positive, three negative, thirteen messaging and twenty-nine area tools", async () => {
   const matrix = await read("docs/submission/reviewer-test-matrix.md");
   const positive = [...matrix.matchAll(/^### P\d+:/gm)].map((match) => match[0]);
   const negative = [...matrix.matchAll(/^### N\d+:/gm)].map((match) => match[0]);
@@ -80,12 +80,13 @@ test("shared reviewer matrix pins five positive, three negative, thirteen messag
   );
   const { PLUGIN_AREAS, areaTools } = await import("../scripts/area-skills.mjs");
   assert.deepEqual(toolRows(areaInventory), PLUGIN_AREAS.flatMap(areaTools));
-  assert.equal(toolRows(areaInventory).length, 20);
+  assert.equal(toolRows(areaInventory).length, 29);
 
   assert.match(matrix, /Both access levels discover these thirteen messaging tools/);
   assert.match(matrix, /`insufficient_scope` before argument validation or dispatch/);
   assert.match(matrix, /`send_message` requires one E\.164 `to` target and exposes no group target/);
-  assert.match(matrix, /Nothing in an area sends, launches, books or charges/);
+  assert.match(matrix, /Nothing in a read or draft area sends, launches, books or charges/);
+  assert.match(matrix, /works only for a contact the person approved under Manage actions, never a group/);
   assert.doesNotMatch(matrix, /\+1\d{10}/);
 });
 
@@ -101,7 +102,7 @@ test("OpenAI packet carries current portal, identity, scan, and review gates", a
     "https://iblusend.com/ai-usage-terms",
     "five positive cases, three negative cases",
     "openai-apps-challenge",
-    "Initial public submission of iBluSend 1.2.0",
+    "Initial public submission of iBluSend 1.3.0",
   ]) {
     assert.ok(packet.includes(required), required);
   }

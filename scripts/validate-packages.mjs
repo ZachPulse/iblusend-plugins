@@ -12,6 +12,7 @@ import {
 import {
   PLUGIN_AREAS,
   renderAreaAccessSection,
+  renderApprovedContactsSection,
 } from "./area-skills.mjs";
 
 const REQUIRED_SKILLS = [
@@ -21,14 +22,21 @@ const REQUIRED_SKILLS = [
   ...PLUGIN_AREAS.map((area) => area.skill),
 ];
 const AREAS_BY_SKILL = new Map(PLUGIN_AREAS.map((area) => [area.skill, area]));
+// Tools the sign-in door does not serve. Calls need the Calls API to accept sign-in tokens (AI
+// parity plan step 1b); the video library and HighLevel transfer tools serve only an owner's key.
 const HELD_BACK_TOOLS = [
-  "create_contact",
-  "mark_read",
-  "remove_reaction",
-  "send_reaction",
-  "send_typing_indicator",
-  "send_voice_memo",
-  "update_contact",
+  "draft_video_details",
+  "end_call",
+  "get_call_status",
+  "get_ghl_workflow_transfer",
+  "get_video_text",
+  "list_calling_lines",
+  "list_ghl_workflow_transfers",
+  "list_video_library",
+  "prepare_call",
+  "queue_ghl_workflow_import",
+  "request_ghl_workflow_export",
+  "update_video_details",
 ];
 const OPENAI_KEYS = new Set([
   "author",
@@ -98,6 +106,10 @@ const IBLUSEND_CLAUDE_OAUTH = Object.freeze({
     "calendar:read",
     "bots:read bots:drafts:write",
     "voice:read voice:drafts:write",
+    "invoices:read invoices:drafts:write",
+    "contact_edits:write",
+    "signals:write",
+    "bookings:write",
   ].join(" "),
   authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
 });
@@ -344,6 +356,9 @@ async function validateSkill(pluginRoot, skillName, errors) {
   const area = AREAS_BY_SKILL.get(skillName);
   if (area && !contents.includes(renderAreaAccessSection(area))) {
     errors.push(`${skillName}: area access rules must exactly match the canonical artifact`);
+  }
+  if (area?.actScope && !contents.includes(renderApprovedContactsSection())) {
+    errors.push(`${skillName}: approved-contact rules must exactly match the canonical artifact`);
   }
   let frontmatter = "";
   if (!contents.startsWith("---\n")) {

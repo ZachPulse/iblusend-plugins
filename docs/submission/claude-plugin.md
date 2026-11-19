@@ -1,7 +1,7 @@
 # Claude plugin directory submission packet
 
-This packet covers the public iBluSend `1.2.0` plugin for Claude Code and Cowork. The plugin bundles
-the same remote iBluSend connector with seven guarded skills. It is separate from the Claude
+This packet covers the public iBluSend `1.3.0` plugin for Claude Code and Cowork. The plugin bundles
+the same remote iBluSend connector with eleven guarded skills. It is separate from the Claude
 Connectors Directory entry. Preparing it does not authorize a submission or publication.
 
 Official references:
@@ -16,7 +16,7 @@ Official references:
 | Field | Value |
 |---|---|
 | Name | iBluSend |
-| Version | `1.2.0` |
+| Version | `1.3.0` |
 | Category | Productivity |
 | Public repository | `https://github.com/ZachPulse/iblusend-plugins` |
 | Plugin path | `plugins/iblusend` |
@@ -45,6 +45,12 @@ white-label bundles are not part of this listing.
 - `templates`: read templates and save one the person approves (Templates area).
 - `campaigns`: read campaigns and save a draft the person launches in the app (Campaigns area).
 - `calendar`: read appointments and open times, and prepare booking links (Calendar area).
+- `invoices`: read invoices and save a draft the person sends in the app (Invoices area).
+- `contact-edits`: add or edit one contact; tags only on approved contacts (Contact edits area).
+- `imessage-extras`: tapbacks, typing bubbles, read receipts and voice memos to approved contacts
+  (iMessage extras area).
+- `calendar-booking`: book, move or cancel after a preview and the person's yes (Calendar booking
+  area).
 - `.mcp.json`: the production iBluSend remote connector using OAuth. It contains no static bearer
   header, API key, client secret, install hook, local executable, or monitor.
 
@@ -65,7 +71,7 @@ In the clean test session:
 
 1. Run `/reload-plugins`.
 2. Inspect `/plugin` and `/mcp`.
-3. Invoke all seven skills with the final file tree.
+3. Invoke all eleven skills with the final file tree.
 4. Confirm the remote connector is deduplicated when the directory connector and plugin point to
    the same URL.
 5. Complete the shared five positive and three negative cases in
@@ -81,14 +87,16 @@ merge and separate submission approval.
 
 Release notes:
 
-> Initial public release of iBluSend 1.2.0 for Claude Code and Cowork. The plugin combines the
+> Initial public release of iBluSend 1.3.0 for Claude Code and Cowork. The plugin combines the
 > production iBluSend OAuth connector with inbox triage, safe one-to-one draft and send, and
-> contact/device compliance skills, plus reports, templates, campaigns and calendar skills for the
-> areas the person ticks on the Connect screen. Area tools save drafts or return links; nothing
-> launches or books until the person presses the button in the app. Every write requires Read and act consent plus a fresh preview
-> and confirmation.
+> contact/device compliance skills, plus a skill for each area the person ticks on the Connect
+> screen: reports, templates, campaigns, calendar, invoices, contact edits, iMessage extras and
+> calendar booking. Read and draft areas save drafts or return links; nothing launches or charges
+> until the person presses the button in the app. Contact edits, iMessage extras and calendar
+> booking reach only contacts the person approves, and a booking waits for a preview and a confirm
+> code. Every write requires Read and act consent plus a fresh preview and confirmation.
 
-Only iBluSend is submitted in version 1.2.0. Generated agency bundles and the iMessage Sender
+Only iBluSend is submitted in version 1.3.0. Generated agency bundles and the iMessage Sender
 reference stay private unless their publisher later owns and approves a separate submission.
 Provider submission, reviewer-requested behavior changes, publication, and the Claude customer flag
 remain separate owner approvals.

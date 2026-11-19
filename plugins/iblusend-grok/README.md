@@ -14,9 +14,12 @@ reconnect later to add an area.
 
 ## Safety
 
-Nothing sends, launches or books without you. A text needs your confirmation in chat first. A
-campaign launches only when you press Launch in iBluSend. A booking, move or
-cancel happens only when you press Schedule or Save there.
+Nothing sends, launches, books or charges without you. A text or a voice memo needs your yes in
+chat first. A campaign launches only when you press Launch in iBluSend, and an
+invoice goes out only when you press Send there. If you tick Calendar booking, a booking, move or
+cancel happens only after you say yes to its preview; otherwise you press Schedule or Save in the
+app. Contact edits, iMessage extras and booking reach only the contacts you approve under Manage
+actions.
 
 ## Links
 

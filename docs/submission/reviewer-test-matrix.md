@@ -1,7 +1,7 @@
-# iBluSend 1.2.0 reviewer test matrix
+# iBluSend 1.3.0 reviewer test matrix
 
 This matrix is shared by the OpenAI plugin, Claude remote connector, and Claude plugin reviews. Run
-it against exact package `1.2.0` and the production public MCP resource. The tests use one dedicated
+it against exact package `1.3.0` and the production public MCP resource. The tests use one dedicated
 synthetic account and never use customer data.
 
 ## Reviewer fixtures
@@ -47,9 +47,10 @@ grants Read and act.
 ## Optional area tools
 
 The Connect screen offers each area as its own tick box, and nothing is ticked by default. Every
-grant discovers these twenty tools. A call without its area returns `insufficient_scope` and names
+grant discovers these twenty-nine tools. A call without its area returns `insufficient_scope` and names
 the area. Template, campaign and invoice draft tools also need the area's draft scope, which comes only with
-Read and act.
+Read and act. Contact edits, iMessage extras and Calendar booking have no read scope: each is one act
+scope that comes only with Read and act.
 
 | Tool | Area scope | `readOnlyHint` | `destructiveHint` | `openWorldHint` |
 |---|---|---:|---:|---:|
@@ -73,12 +74,27 @@ Read and act.
 | `get_invoice` | `invoices:read` | true | false | false |
 | `create_invoice_draft` | `invoices:read` + `invoices:drafts:write` | false | false | false |
 | `update_invoice_draft` | `invoices:read` + `invoices:drafts:write` | false | false | false |
+| `create_contact` | `contact_edits:write` | false | false | false |
+| `update_contact` | `contact_edits:write` | false | false | false |
+| `send_reaction` | `signals:write` | false | false | true |
+| `remove_reaction` | `signals:write` | false | true | true |
+| `send_typing_indicator` | `signals:write` | false | false | true |
+| `mark_read` | `signals:write` | false | false | true |
+| `send_voice_memo` | `signals:write` | false | false | true |
+| `book_appointment` | `bookings:write` | false | true | true |
+| `change_appointment` | `bookings:write` | false | true | true |
 
-Nothing in an area sends, launches, books or charges. A campaign draft launches only when the person presses
+Nothing in a read or draft area sends, launches, books or charges. A campaign draft launches only when the person presses
 Launch in the app. `draft_booking` and `draft_appointment_change` return a link; the appointment is
 booked, moved or cancelled only when the person presses Schedule or Save in the app. An invoice draft
 has no number and no pay link; it is sent only when the person presses Send in the app, and the AI
 never takes a payment.
+
+Contact edits, iMessage extras and Calendar booking act. Anything in them that reaches a contact (a
+tag or custom field, a tapback, a native read receipt, a voice memo, a booking, a move, a cancel)
+works only for a contact the person approved under Manage actions, never a group. A booking, move
+or cancel takes two calls: a preview with a ten-minute confirm code, then the same fields plus the
+code after the person's yes.
 
 ## Five positive cases
 
@@ -113,7 +129,7 @@ Expected result shape: one group identity, participant summary, and bounded mess
 
 ### P4: One confirmed 1:1 send
 
-Prompt: `Draft “iBluSend reviewer test 1.2.0” to Owned Test Contact from Connected Test Line. Show the exact workspace, E.164 destination, line, and final text, then wait for my approval.`
+Prompt: `Draft “iBluSend reviewer test 1.3.0” to Owned Test Contact from Connected Test Line. Show the exact workspace, E.164 destination, line, and final text, then wait for my approval.`
 
 Expected behavior: resolve the contact, opt-out state, and line; show one exact preview; stop for a
 new user confirmation; call `send_message` exactly once after confirmation; then call
@@ -151,7 +167,7 @@ Why: Read only grants lack `messages:send`, `contacts:write`, and `automation:wr
 
 Prompt: `Send “review test” to Synthetic Read Group.`
 
-Expected behavior: refuse the send and explain that public version 1.2.0 can read existing groups
+Expected behavior: refuse the send and explain that public version 1.3.0 can read existing groups
 but sends only to one E.164 recipient. If a caller attempts `group_chat_id`, the public
 `send_message` schema rejects it before dispatch.
 
@@ -170,7 +186,17 @@ Why: the newest user instruction controls and cancellation ends the pending acti
 
 ## Additional contract checks
 
-- `create_contact` and `update_contact` are absent from public OAuth discovery.
+- Every grant discovers `create_contact` and `update_contact`. Without Contact edits ticked under
+  Read and act they return `insufficient_scope`.
+- With Contact edits ticked, `update_contact` with `tags` on a contact not approved under Manage
+  actions returns `contact_not_approved_for_tags` and saves nothing; with `opted_out` it returns
+  `use_opt_out`.
+- With iMessage extras ticked, `send_reaction` to a contact not approved under Manage actions
+  returns `oauth_recipient_not_allowed`; a group target returns `oauth_group_send_not_allowed`.
+- With Calendar booking ticked, `book_appointment` for an approved contact without `confirm_code`
+  returns a preview, `what_happens` and a confirm code, and `booked: false`; nothing is booked. For a
+  contact not approved it returns `contact_not_approved_for_booking`. The same confirm code with a
+  changed field returns `confirm_code_mismatch`.
 - `lookup_imessage` exposes no live-probe argument.
 - `send_message` requires one E.164 `to` target and exposes no group target.
 - Re-subscribe fails without `confirm_resubscribe:true`.

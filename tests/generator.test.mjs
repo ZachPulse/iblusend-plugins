@@ -18,6 +18,7 @@ import {
 import {
   PLUGIN_AREAS,
   renderAreaAccessSection,
+  renderApprovedContactsSection,
 } from "../scripts/area-skills.mjs";
 
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -174,7 +175,7 @@ test("iBluSend pins Claude CIMD OAuth while Codex and white-label packages stay 
   ));
   assert.deepEqual(iblusendMcp.mcpServers.iblusend.oauth, {
     clientId: "https://claude.ai/oauth/claude-code-client-metadata",
-    scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write",
+    scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write invoices:read invoices:drafts:write contact_edits:write signals:write bookings:write",
     authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
   });
   assert.deepEqual(iblusendCodex.mcpServers, {
@@ -489,33 +490,33 @@ for (const [label, mutate] of [
 }
 
 for (const [label, unsafeGuidance] of [
-  ["plain identifiers", "Call create_contact and update_contact for profile writes."],
-  ["bold identifiers", "Call **create_contact** and **update_contact** for profile writes."],
-  ["fenced identifiers", "```text\ncreate_contact\nupdate_contact\n```"],
+  ["plain identifiers", "Call update_video_details and prepare_call for profile writes."],
+  ["bold identifiers", "Call **update_video_details** and **prepare_call** for profile writes."],
+  ["fenced identifiers", "```text\nupdate_video_details\nprepare_call\n```"],
   [
     "host-namespaced identifiers",
-    "Call mcp__iblusend__create_contact and iblusend_update_contact for profile writes.",
+    "Call mcp__iblusend__update_video_details and iblusend_prepare_call for profile writes.",
   ],
-  ["Markdown-escaped identifiers", "Call create\\_contact and update\\_contact for profile writes."],
-  ["JSON/YAML Unicode escapes", "Call create\\u005fcontact and update\\u005fcontact."],
-  ["JSON/YAML letter Unicode escapes", "Call cre\\u0061te_contact and upd\\u0061te_contact."],
-  ["YAML hexadecimal escapes", "Call create\\x5fcontact and update\\x5fcontact."],
-  ["YAML letter hexadecimal escapes", "Call cre\\x61te_contact and upd\\x61te_contact."],
-  ["Markdown decimal entities", "Call create&#95;contact and update&#95;contact."],
-  ["Markdown letter decimal entities", "Call cre&#97;te_contact and upd&#97;te_contact."],
-  ["Markdown hexadecimal entities", "Call create&#x5f;contact and update&#x5f;contact."],
-  ["URL-encoded identifiers", "Call create%5Fcontact and update%5Fcontact."],
-  ["URL-encoded letters", "Call cre%61te_contact and upd%61te_contact."],
-  ["nested URL-encoded letters", "Call cre%2561te_contact and upd%2561te_contact."],
-  ["Unicode compatibility underscores", "Call create＿contact and update＿contact."],
-  ["split Markdown emphasis", "Call cre**ate**_contact and upd**ate**_contact."],
-  ["split Markdown inline code", "Call cre`ate`_contact and upd`ate`_contact."],
-  ["split HTML tags", "Call cre<strong>ate</strong>_contact and upd<strong>ate</strong>_contact."],
-  ["split HTML comments", "Call cre<!-- hidden -->ate_contact and upd<!-- hidden -->ate_contact."],
-  ["split Markdown links", "Call cre[ate](https://iblusend.com)_contact and upd[ate](https://iblusend.com)_contact."],
-  ["zero-width characters", "Call cre\u200bate_contact and upd\u200bate_contact."],
-  ["soft hyphens", "Call cre\u00adate_contact and upd\u00adate_contact."],
-  ["underscore emphasis", "Call cre__ate___contact and upd__ate___contact."],
+  ["Markdown-escaped identifiers", "Call update\\_video_details and prepare_call for profile writes."],
+  ["JSON/YAML Unicode escapes", "Call update\\u005fvideo_details and prepare_call."],
+  ["JSON/YAML letter Unicode escapes", "Call upd\\u0061te_video_details and prepare_call."],
+  ["YAML hexadecimal escapes", "Call update\\x5fvideo_details and prepare_call."],
+  ["YAML letter hexadecimal escapes", "Call upd\\x61te_video_details and prepare_call."],
+  ["Markdown decimal entities", "Call update&#95;video_details and prepare_call."],
+  ["Markdown letter decimal entities", "Call upd&#97;te_video_details and prepare_call."],
+  ["Markdown hexadecimal entities", "Call update&#x5f;video_details and prepare_call."],
+  ["URL-encoded identifiers", "Call update%5Fvideo_details and prepare_call."],
+  ["URL-encoded letters", "Call upd%61te_video_details and prepare_call."],
+  ["nested URL-encoded letters", "Call upd%2561te_video_details and prepare_call."],
+  ["Unicode compatibility underscores", "Call update＿video_details and prepare_call."],
+  ["split Markdown emphasis", "Call upd**ate**_video_details and prepare_call."],
+  ["split Markdown inline code", "Call upd`ate`_video_details and prepare_call."],
+  ["split HTML tags", "Call upd<strong>ate</strong>_video_details and prepare_call."],
+  ["split HTML comments", "Call upd<!-- hidden -->ate_video_details and prepare_call."],
+  ["split Markdown links", "Call upd[ate](https://iblusend.com)_video_details and prepare_call."],
+  ["zero-width characters", "Call upd\u200bate_video_details and prepare_call."],
+  ["soft hyphens", "Call upd\u00adate_video_details and prepare_call."],
+  ["underscore emphasis", "Call upd__ate___video_details and prepare_call."],
 ]) {
   test(`validator rejects checksum-refreshed hidden contact-write tools in ${label}`, async (t) => {
     const output = await makeTemp(t, `hidden-contact-writes-${label.replace(/[^a-z0-9-]+/gi, "-")}`);
@@ -530,8 +531,8 @@ for (const [label, unsafeGuidance] of [
       (contents) => `${contents}\n${unsafeGuidance}\n`,
     );
 
-    assert.ok(errors.includes("contact-device-compliance: held-back tool create_contact is named as callable"));
-    assert.ok(errors.includes("contact-device-compliance: held-back tool update_contact is named as callable"));
+    assert.ok(errors.includes("contact-device-compliance: held-back tool update_video_details is named as callable"));
+    assert.ok(errors.includes("contact-device-compliance: held-back tool prepare_call is named as callable"));
     assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
   });
 }
@@ -539,87 +540,87 @@ for (const [label, unsafeGuidance] of [
 for (const [label, unsafeGuidance, expectedError] of [
   [
     "named HTML entity",
-    "Call cre&aopf;te_contact and upd&aopf;te_contact.",
+    "Call upd&aopf;te_video_details and prepare_call.",
     "named HTML entities are not allowed",
   ],
   [
     "balanced Markdown link",
-    "Call cre[ate](https://iblusend.com/a_(b))_contact and upd[ate](https://iblusend.com/a_(b))_contact.",
+    "Call upd[ate](https://iblusend.com/a_(b))_video_details and prepare_call.",
     "Markdown links are not allowed",
   ],
   [
     "shortcut reference link",
-    "Call cre[ate]_contact and upd[ate]_contact.\n\n[ate]: https://iblusend.com",
+    "Call upd[ate]_video_details and prepare_call.\n\n[ate]: https://iblusend.com",
     "Markdown links are not allowed",
   ],
   [
     "blockquote shortcut reference link",
-    "Call cre[ate]_contact and upd[ate]_contact.\n\n> [ate]: https://iblusend.com",
+    "Call upd[ate]_video_details and prepare_call.\n\n> [ate]: https://iblusend.com",
     "Markdown links are not allowed",
   ],
   [
     "nested blockquote shortcut reference link",
-    "Call cre[ate]_contact and upd[ate]_contact.\n\n>> [ate]: https://iblusend.com",
+    "Call upd[ate]_video_details and prepare_call.\n\n>> [ate]: https://iblusend.com",
     "Markdown links are not allowed",
   ],
   [
     "list shortcut reference link",
-    "Call cre[ate]_contact and upd[ate]_contact.\n\n- [ate]: https://iblusend.com",
+    "Call upd[ate]_video_details and prepare_call.\n\n- [ate]: https://iblusend.com",
     "Markdown links are not allowed",
   ],
   [
     "multiline shortcut reference link",
-    "Call cre[ate]_contact and upd[ate]_contact.\n\n[ate]:\n  https://iblusend.com",
+    "Call upd[ate]_video_details and prepare_call.\n\n[ate]:\n  https://iblusend.com",
     "Markdown links are not allowed",
   ],
   [
     "blockquote multiline shortcut reference link",
-    "Call cre[ate]_contact and upd[ate]_contact.\n\n> [ate]:\n> https://iblusend.com",
+    "Call upd[ate]_video_details and prepare_call.\n\n> [ate]:\n> https://iblusend.com",
     "Markdown links are not allowed",
   ],
   [
     "HTML tag with a quoted closing character",
-    'Call cre<strong title="x>y">ate</strong>_contact and upd<strong title="x>y">ate</strong>_contact.',
+    'Call upd<strong title="x>y">ate</strong>_video_details and prepare_call.',
     "HTML tags are not allowed",
   ],
   [
     "HTML processing instruction",
-    "Call cre<?hidden?>ate_contact and upd<?hidden?>ate_contact.",
+    "Call upd<?hidden?>ate_video_details and prepare_call.",
     "HTML processing instructions and declarations are not allowed",
   ],
   [
     "HTML declaration",
-    "Call cre<!DOCTYPE html>ate_contact and upd<!DOCTYPE html>ate_contact.",
+    "Call upd<!DOCTYPE html>ate_video_details and prepare_call.",
     "HTML processing instructions and declarations are not allowed",
   ],
   [
     "HTML CDATA section",
-    "Call cre<![CDATA[]]>ate_contact and upd<![CDATA[]]>ate_contact.",
+    "Call upd<![CDATA[]]>ate_video_details and prepare_call.",
     "HTML processing instructions and declarations are not allowed",
   ],
   [
     "percent-encoded HTML processing instruction",
-    "Call cre%3C%3Fhidden%3F%3Eate_contact and upd%3C%3Fhidden%3F%3Eate_contact.",
+    "Call upd%3C%3Fhidden%3F%3Eate_video_details and prepare_call.",
     "HTML processing instructions and declarations are not allowed",
   ],
   [
     "nested percent-encoded HTML processing instruction",
-    "Call cre%253C%253Fhidden%253F%253Eate_contact and upd%253C%253Fhidden%253F%253Eate_contact.",
+    "Call upd%253C%253Fhidden%253F%253Eate_video_details and prepare_call.",
     "HTML processing instructions and declarations are not allowed",
   ],
   [
     "percent-encoded HTML declaration",
-    "Call cre%3C%21DOCTYPE%20html%3Eate_contact and upd%3C%21DOCTYPE%20html%3Eate_contact.",
+    "Call upd%3C%21DOCTYPE%20html%3Eate_video_details and prepare_call.",
     "HTML processing instructions and declarations are not allowed",
   ],
   [
     "percent-encoded HTML CDATA section",
-    "Call cre%3C%21%5BCDATA%5B%5D%5D%3Eate_contact and upd%3C%21%5BCDATA%5B%5D%5D%3Eate_contact.",
+    "Call upd%3C%21%5BCDATA%5B%5D%5D%3Eate_video_details and prepare_call.",
     "HTML processing instructions and declarations are not allowed",
   ],
   [
     "percent-encoded named HTML entity",
-    "Call cre%26aopf%3Bte_contact and upd%26aopf%3Bte_contact.",
+    "Call upd%26aopf%3Bte_video_details and prepare_call.",
     "named HTML entities are not allowed",
   ],
 ]) {
@@ -683,7 +684,7 @@ test("validator rejects held-back tools in a checksum-covered skill reference", 
 
   const relativeReferencePath = "skills/contact-device-compliance/references/contact-writes.md";
   const referencePath = path.join(pluginRoot, relativeReferencePath);
-  const referenceContents = "Call mcp__iblusend__create_contact and mcp__iblusend__update_contact.\n";
+  const referenceContents = "Call mcp__iblusend__update_video_details and mcp__iblusend__prepare_call.\n";
   await mkdir(path.dirname(referencePath), { recursive: true });
   await writeFile(referencePath, referenceContents);
 
@@ -702,10 +703,10 @@ test("validator rejects held-back tools in a checksum-covered skill reference", 
 
   const errors = await validatePackageRoot(output);
   assert.ok(errors.includes(
-    `${relativeReferencePath}: held-back tool create_contact is named as callable`,
+    `${relativeReferencePath}: held-back tool update_video_details is named as callable`,
   ));
   assert.ok(errors.includes(
-    `${relativeReferencePath}: held-back tool update_contact is named as callable`,
+    `${relativeReferencePath}: held-back tool prepare_call is named as callable`,
   ));
   assert.equal(errors.some((error) => error.includes("checksum")), false);
 });
@@ -719,7 +720,7 @@ test("validator rejects a symlinked skill reference", async (t) => {
 
   const pluginRoot = path.join(output, "plugins", "iblusend");
   const targetPath = path.join(output, "hidden-contact-writes.md");
-  await writeFile(targetPath, "Call mcp__iblusend__create_contact.\n");
+  await writeFile(targetPath, "Call mcp__iblusend__update_video_details.\n");
   const relativeReferencePath = "skills/contact-device-compliance/references/contact-writes.md";
   const referencePath = path.join(pluginRoot, relativeReferencePath);
   await mkdir(path.dirname(referencePath), { recursive: true });
@@ -749,7 +750,7 @@ for (const ignoredDirectory of [".git", "node_modules", "dist"]) {
     await mkdir(path.dirname(referencePath), { recursive: true });
     await writeFile(
       referencePath,
-      "Call mcp__iblusend__create_contact and mcp__iblusend__update_contact.\n",
+      "Call mcp__iblusend__update_video_details and mcp__iblusend__prepare_call.\n",
     );
 
     const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");
@@ -763,7 +764,7 @@ for (const ignoredDirectory of [".git", "node_modules", "dist"]) {
 
     const errors = await validatePackageRoot(output);
     assert.ok(errors.includes(
-      `${relativeReferencePath}: held-back tool create_contact is named as callable`,
+      `${relativeReferencePath}: held-back tool update_video_details is named as callable`,
     ));
     assert.ok(errors.includes(`CHECKSUMS.sha256 does not cover ${relativeReferencePath}`));
   });
@@ -786,7 +787,7 @@ for (const providerSurface of ["scripts", "commands", "agents"]) {
 
     const relativeProviderPath = `${providerSurface}/contact-writes.md`;
     const providerPath = path.join(pluginRoot, relativeProviderPath);
-    const providerContents = "Call mcp__iblusend__create_contact and mcp__iblusend__update_contact.\n";
+    const providerContents = "Call mcp__iblusend__update_video_details and mcp__iblusend__prepare_call.\n";
     await mkdir(path.dirname(providerPath), { recursive: true });
     await writeFile(providerPath, providerContents);
 
@@ -805,10 +806,10 @@ for (const providerSurface of ["scripts", "commands", "agents"]) {
 
     const errors = await validatePackageRoot(output);
     assert.ok(errors.includes(
-      `${relativeProviderPath}: held-back tool create_contact is named as callable`,
+      `${relativeProviderPath}: held-back tool update_video_details is named as callable`,
     ));
     assert.ok(errors.includes(
-      `${relativeProviderPath}: held-back tool update_contact is named as callable`,
+      `${relativeProviderPath}: held-back tool prepare_call is named as callable`,
     ));
     assert.equal(errors.some((error) => error.includes("checksum")), false);
   });
@@ -827,15 +828,15 @@ for (const catalogPath of [
 
     const absoluteCatalogPath = path.join(output, catalogPath);
     const catalog = JSON.parse(await readFile(absoluteCatalogPath, "utf8"));
-    catalog.plugins[0].description = "Call create_contact and update_contact for contact writes.";
+    catalog.plugins[0].description = "Call update_video_details and prepare_call for contact writes.";
     await writeFile(absoluteCatalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
 
     const errors = await validatePackageRoot(output);
     assert.ok(errors.includes(
-      `${catalogPath}: held-back tool create_contact is named as callable`,
+      `${catalogPath}: held-back tool update_video_details is named as callable`,
     ));
     assert.ok(errors.includes(
-      `${catalogPath}: held-back tool update_contact is named as callable`,
+      `${catalogPath}: held-back tool prepare_call is named as callable`,
     ));
   });
 }
@@ -852,10 +853,10 @@ test("validator rejects JSON-decoded hidden tools in a checksummed manifest", as
   const manifestPath = path.join(pluginRoot, relativeManifestPath);
   const originalManifest = await readFile(manifestPath, "utf8");
   const manifest = JSON.parse(originalManifest);
-  manifest.interface.defaultPrompt[0] = "Call create_contact and update_contact.";
+  manifest.interface.defaultPrompt[0] = "Call update_video_details and prepare_call.";
   const mutatedManifest = `${JSON.stringify(manifest, null, 2)}\n`
-    .replaceAll("create_contact", "cre\\u0061te_contact")
-    .replaceAll("update_contact", "upd\\u0061te_contact");
+    .replaceAll("update_video_details", "upd\\u0061te_video_details")
+    .replaceAll("prepare_call", "prepare_call");
   await writeFile(manifestPath, mutatedManifest);
 
   const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");
@@ -869,10 +870,10 @@ test("validator rejects JSON-decoded hidden tools in a checksummed manifest", as
 
   const errors = await validatePackageRoot(output);
   assert.ok(errors.includes(
-    `${relativeManifestPath}: held-back tool create_contact is named as callable`,
+    `${relativeManifestPath}: held-back tool update_video_details is named as callable`,
   ));
   assert.ok(errors.includes(
-    `${relativeManifestPath}: held-back tool update_contact is named as callable`,
+    `${relativeManifestPath}: held-back tool prepare_call is named as callable`,
   ));
   assert.equal(errors.some((error) => error.includes("checksum")), false);
 });
@@ -1023,10 +1024,14 @@ for (const [label, brandFile] of [
       assert.match(contents, new RegExp(`^---\\nname: ${area.skill}\\n`));
       assert.ok(contents.includes(renderAreaAccessSection(area)), area.skill);
       assert.ok(contents.includes(brand.package.displayName), area.skill);
-      for (const tool of [...area.readTools, ...area.draftTools]) {
+      for (const tool of [...area.readTools, ...area.draftTools, ...area.actTools]) {
         assert.ok(contents.includes(`\`${tool}\``), `${area.skill}: ${tool}`);
       }
       if (area.draftScope) assert.match(contents, /choose Read and act/);
+      if (area.actScope) {
+        assert.match(contents, /chose Read and act/);
+        assert.ok(contents.includes(renderApprovedContactsSection()), `${area.skill}: approved contacts`);
+      }
     }
   });
 }
@@ -1066,6 +1071,25 @@ test("validator rejects a checksum-refreshed area skill with weakened access rul
   assert.ok(errors.includes("campaigns: area access rules must exactly match the canonical artifact"));
   assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
 });
+
+for (const skill of ["contact-edits", "imessage-extras", "calendar-booking"]) {
+  test(`validator rejects a checksum-refreshed ${skill} skill that drops the approved-contact rule`, async (t) => {
+    const output = await makeTemp(t, `weakened-approved-${skill}`);
+    const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
+    await writeBrandPackage({ brand, outputRoot: output });
+
+    const errors = await validateChecksumRefreshedSkillMutation(
+      output,
+      skill,
+      (contents) => contents.replace(
+        "Do not try another contact, another tool or another number.",
+        "Try the next contact.",
+      ),
+    );
+    assert.ok(errors.includes(`${skill}: approved-contact rules must exactly match the canonical artifact`));
+    assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
+  });
+}
 
 test("validator requires every area skill", async (t) => {
   const output = await makeTemp(t, "missing-area-skill");

@@ -4,9 +4,9 @@
   "package": {
     "slug": "iblusend",
     "displayName": "iBluSend",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
-    "longDescription": "Connect one iBluSend workspace to inspect conversations, contacts, devices, groups, delivery status, opt-out state, and bot status. Draft and send only after showing the exact destination and content for approval. If the person ticks them when connecting, it can also read reports, templates, campaigns and the calendar, save template and campaign drafts, and prepare booking links they confirm in the app.",
+    "longDescription": "Connect one iBluSend workspace to read conversations, contacts, devices, groups, delivery, opt-out and bot status, and send one confirmed message at a time. Areas the person ticks add reports, templates, campaigns, the calendar and invoices (drafts only; nothing launches or charges), plus contact edits, iMessage extras and calendar booking under Read and act, only for contacts the person approves.",
     "category": "Productivity",
     "capabilities": ["Interactive", "Read", "Write"],
     "keywords": ["imessage", "sms", "messaging", "contacts", "inbox", "crm"]
@@ -32,7 +32,7 @@
     "resourceUrl": "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public",
     "oauth": {
       "clientId": "https://claude.ai/oauth/claude-code-client-metadata",
-      "scopes": "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write",
+      "scopes": "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write invoices:read invoices:drafts:write contact_edits:write signals:write bookings:write",
       "authServerMetadataUrl": "https://iblusend.com/.well-known/oauth-authorization-server"
     }
   },
