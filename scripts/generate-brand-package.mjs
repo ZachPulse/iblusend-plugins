@@ -15,6 +15,7 @@ import {
   areaTools,
   renderAreaSkill,
 } from "./area-skills.mjs";
+import { BUILDER_AREAS, BUILDER_SKILL_NAMES, builderTools, renderBuilderSkill } from "./builder-skills.mjs";
 
 const GENERATOR_VERSION = 4;
 const MAX_SOURCE_ASSET_BYTES = 10 * 1024 * 1024;
@@ -980,6 +981,13 @@ function areaTableRows() {
   }).join("\n");
 }
 
+function builderTableRows() {
+  return BUILDER_AREAS.map((area) => {
+    const tools = builderTools(area).map((tool) => `\`${tool}\``).join(", ");
+    return `| ${area.label} | \`${area.readScope}\` | ${area.draftScope ? `\`${area.draftScope}\`` : "none"} | ${tools} |`;
+  }).join("\n");
+}
+
 const AREA_TOOL_COUNT_WORDS = Object.freeze({ 29: "twenty-nine" });
 
 function areaToolCountWord() {
@@ -1014,6 +1022,10 @@ Authorization header to this package.
 - \`contact-edits\`: add or edit one contact; tags and custom fields only on approved contacts.
 - \`imessage-extras\`: tapbacks, typing bubbles, read receipts and voice memos to approved contacts.
 - \`calendar-booking\`: book, move or cancel an appointment in chat after a preview and a yes.
+- \`workflow-builder\`: build and edit workflow drafts the owner publishes in the app.
+- \`bot-builder\`: build and edit chat bots; new bots start off and the owner switches them on.
+- \`voice-agents\`: propose a voice agent prompt or greeting the owner applies in Voice Studio.
+- \`past-texts\`: read the past texts the owner copied from their Mac.
 
 ## Messaging tools
 
@@ -1041,9 +1053,20 @@ booking link waits for Schedule or Save, and an invoice waits for Send.
 Contact edits, iMessage extras and calendar booking act. Each needs Read and act, and anything that
 reaches a contact works only for contacts the person approved under Manage actions in the app,
 never a group. A voice memo, a booking, a move and a cancel each wait for the person's yes to an
-exact preview; a booking takes a second call with the preview's confirm code. Workflows, bots and
-voice agents are further optional areas; their tools also need the workspace owner and that
-feature turned on.
+exact preview; a booking takes a second call with the preview's confirm code.
+
+## Builder areas
+
+Only the workspace owner can tick these, and only while the feature is on for the workspace. Their
+tools appear only on a connection that ticked the area. A team member's connection never has them.
+
+| Area | Read scope | Draft scope | Tools |
+|---|---|---|---|
+${builderTableRows()}
+
+Saving in a builder area changes a draft only. A workflow waits for Publish in the workflow builder,
+a bot is created switched off and waits for the owner to switch it on, and a voice agent proposal
+waits for Apply in Voice Studio. Past texts only read.
 `;
 }
 
@@ -1107,6 +1130,9 @@ export function renderBrandPackage(
   addText(`${pluginPrefix}/skills/contact-device-compliance/SKILL.md`, contactComplianceSkill(brand));
   for (const skillName of AREA_SKILL_NAMES) {
     addText(`${pluginPrefix}/skills/${skillName}/SKILL.md`, renderAreaSkill(brand, skillName));
+  }
+  for (const skillName of BUILDER_SKILL_NAMES) {
+    addText(`${pluginPrefix}/skills/${skillName}/SKILL.md`, renderBuilderSkill(brand, skillName));
   }
   files.set(
     `${pluginPrefix}/assets/icon.png`,

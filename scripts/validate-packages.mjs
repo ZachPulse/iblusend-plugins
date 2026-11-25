@@ -14,13 +14,20 @@ import {
   renderAreaAccessSection,
   renderApprovedContactsSection,
 } from "./area-skills.mjs";
+import {
+  BUILDER_AREAS,
+  renderBuilderAccessSection,
+  renderDraftOnlySection,
+} from "./builder-skills.mjs";
 
 const REQUIRED_SKILLS = [
   "contact-device-compliance",
   "inbox-triage",
   "safe-draft-and-send",
   ...PLUGIN_AREAS.map((area) => area.skill),
+  ...BUILDER_AREAS.map((area) => area.skill),
 ];
+const BUILDER_AREAS_BY_SKILL = new Map(BUILDER_AREAS.map((area) => [area.skill, area]));
 const AREAS_BY_SKILL = new Map(PLUGIN_AREAS.map((area) => [area.skill, area]));
 // Tools the sign-in door does not serve. Calls need the Calls API to accept sign-in tokens (AI
 // parity plan step 1b); the video library and HighLevel transfer tools serve only an owner's key.
@@ -110,6 +117,7 @@ const IBLUSEND_CLAUDE_OAUTH = Object.freeze({
     "contact_edits:write",
     "signals:write",
     "bookings:write",
+    "history:read",
   ].join(" "),
   authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
 });
@@ -359,6 +367,13 @@ async function validateSkill(pluginRoot, skillName, errors) {
   }
   if (area?.actScope && !contents.includes(renderApprovedContactsSection())) {
     errors.push(`${skillName}: approved-contact rules must exactly match the canonical artifact`);
+  }
+  const builder = BUILDER_AREAS_BY_SKILL.get(skillName);
+  if (builder && !contents.includes(renderBuilderAccessSection(builder))) {
+    errors.push(`${skillName}: builder access rules must exactly match the canonical artifact`);
+  }
+  if (builder?.draftScope && !contents.includes(renderDraftOnlySection(builder))) {
+    errors.push(`${skillName}: drafts-only rules must exactly match the canonical artifact`);
   }
   let frontmatter = "";
   if (!contents.startsWith("---\n")) {

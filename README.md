@@ -23,9 +23,9 @@ engine, does not bypass iBluSend compliance controls, and does not ship credenti
 
 ## Repository status
 
-Version `1.3.0` adds the contact edits, iMessage extras, and calendar booking skills, and asks for
-every sign-in area the server offers, so Claude Code and Grok can offer Invoices and the three new
-areas on the Connect screen (all of them went live on the server 2026-11-19). It has **not** been submitted to or published in Anthropic's or OpenAI's provider
+Version `1.4.0` adds the workflow builder, bot builder, voice agents and past texts skills, and asks
+for Past texts from your Mac on the Connect screen. Version 1.3.0 added the contact edits, iMessage
+extras, and calendar booking skills. It has **not** been submitted to or published in Anthropic's or OpenAI's provider
 directory. The Grok Build copy (`plugins/iblusend-grok`) is listed through a pull request to
 `xai-org/plugin-marketplace`. The iBluSend package carries the OpenAI app mapping proven in
 the private ChatGPT developer-mode beta; white-label output omits `.app.json` unless that brand has
