@@ -20,6 +20,12 @@ import {
   renderAreaAccessSection,
   renderApprovedContactsSection,
 } from "../scripts/area-skills.mjs";
+import {
+  BUILDER_AREAS,
+  builderTools,
+  renderBuilderAccessSection,
+  renderDraftOnlySection,
+} from "../scripts/builder-skills.mjs";
 
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const IBLUSEND_SOURCE_ASSETS = [
@@ -175,7 +181,7 @@ test("iBluSend pins Claude CIMD OAuth while Codex and white-label packages stay 
   ));
   assert.deepEqual(iblusendMcp.mcpServers.iblusend.oauth, {
     clientId: "https://claude.ai/oauth/claude-code-client-metadata",
-    scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write invoices:read invoices:drafts:write contact_edits:write signals:write bookings:write",
+    scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write invoices:read invoices:drafts:write contact_edits:write signals:write bookings:write history:read",
     authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
   });
   assert.deepEqual(iblusendCodex.mcpServers, {
@@ -1090,6 +1096,54 @@ for (const skill of ["contact-edits", "imessage-extras", "calendar-booking"]) {
     assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
   });
 }
+
+for (const [label, brandFile] of [
+  ["iblusend", "iblusend.json"],
+  ["imessage-sender", "imessage-sender.example.json"],
+]) {
+  test(`${label} builder skills carry the owner rule, the drafts-only rule and every tool`, async (t) => {
+    const output = await makeTemp(t, `${label}-builder-skills`);
+    const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", brandFile));
+    await writeBrandPackage({ brand, outputRoot: output });
+    for (const area of BUILDER_AREAS) {
+      for (const slug of [brand.package.slug, `${brand.package.slug}-grok`]) {
+        const contents = await readFile(path.join(output, "plugins", slug, "skills", area.skill, "SKILL.md"), "utf8");
+        assert.match(contents, new RegExp(`^---\\nname: ${area.skill}\\n`));
+        assert.ok(contents.includes(renderBuilderAccessSection(area)), `${slug} ${area.skill}`);
+        assert.match(contents, /Only the workspace owner can tick/);
+        for (const tool of builderTools(area)) assert.ok(contents.includes(`\`${tool}\``), `${area.skill}: ${tool}`);
+        if (area.draftScope) assert.ok(contents.includes(renderDraftOnlySection(area)), `${area.skill}: drafts only`);
+      }
+    }
+  });
+}
+
+for (const skill of ["workflow-builder", "bot-builder", "voice-agents"]) {
+  test(`validator rejects a checksum-refreshed ${skill} skill that drops the drafts-only rule`, async (t) => {
+    const output = await makeTemp(t, `weakened-drafts-${skill}`);
+    const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
+    await writeBrandPackage({ brand, outputRoot: output });
+    const errors = await validateChecksumRefreshedSkillMutation(
+      output,
+      skill,
+      (contents) => contents.replace("Never say it is live.", "Say it is live."),
+    );
+    assert.ok(errors.includes(`${skill}: drafts-only rules must exactly match the canonical artifact`));
+    assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
+  });
+}
+
+test("validator rejects a builder skill that drops the owner-only rule", async (t) => {
+  const output = await makeTemp(t, "weakened-builder-access");
+  const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
+  await writeBrandPackage({ brand, outputRoot: output });
+  const errors = await validateChecksumRefreshedSkillMutation(
+    output,
+    "past-texts",
+    (contents) => contents.replace("A team member's connection never has these tools.", ""),
+  );
+  assert.ok(errors.includes("past-texts: builder access rules must exactly match the canonical artifact"));
+});
 
 test("validator requires every area skill", async (t) => {
   const output = await makeTemp(t, "missing-area-skill");

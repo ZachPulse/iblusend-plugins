@@ -22,6 +22,10 @@ Authorization header to this package.
 - `contact-edits`: add or edit one contact; tags and custom fields only on approved contacts.
 - `imessage-extras`: tapbacks, typing bubbles, read receipts and voice memos to approved contacts.
 - `calendar-booking`: book, move or cancel an appointment in chat after a preview and a yes.
+- `workflow-builder`: build and edit workflow drafts the owner publishes in the app.
+- `bot-builder`: build and edit chat bots; new bots start off and the owner switches them on.
+- `voice-agents`: propose a voice agent prompt or greeting the owner applies in Voice Studio.
+- `past-texts`: read the past texts the owner copied from their Mac.
 
 ## Messaging tools
 
@@ -56,6 +60,20 @@ booking link waits for Schedule or Save, and an invoice waits for Send.
 Contact edits, iMessage extras and calendar booking act. Each needs Read and act, and anything that
 reaches a contact works only for contacts the person approved under Manage actions in the app,
 never a group. A voice memo, a booking, a move and a cancel each wait for the person's yes to an
-exact preview; a booking takes a second call with the preview's confirm code. Workflows, bots and
-voice agents are further optional areas; their tools also need the workspace owner and that
-feature turned on.
+exact preview; a booking takes a second call with the preview's confirm code.
+
+## Builder areas
+
+Only the workspace owner can tick these, and only while the feature is on for the workspace. Their
+tools appear only on a connection that ticked the area. A team member's connection never has them.
+
+| Area | Read scope | Draft scope | Tools |
+|---|---|---|---|
+| Workflows | `workflows:read` | `workflows:drafts:write` | `list_workflow_blocks`, `get_workflow_block_schema`, `list_workflow_resources`, `list_workflows`, `get_workflow`, `validate_workflow_draft`, `create_workflow_draft`, `update_workflow_draft` |
+| BluBot | `bots:read` | `bots:drafts:write` | `list_bot_templates`, `list_bots`, `get_bot`, `create_bot_draft`, `update_bot_draft` |
+| Voice agents | `voice:read` | `voice:drafts:write` | `list_voice_agents`, `get_voice_agent`, `propose_voice_agent_change` |
+| Past texts from your Mac | `history:read` | none | `list_history`, `search_history` |
+
+Saving in a builder area changes a draft only. A workflow waits for Publish in the workflow builder,
+a bot is created switched off and waits for the owner to switch it on, and a voice agent proposal
+waits for Apply in Voice Studio. Past texts only read.

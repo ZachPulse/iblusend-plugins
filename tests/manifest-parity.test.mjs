@@ -45,7 +45,7 @@ test("OpenAI and Claude manifests share identity, skills, and MCP resource", asy
         url: "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public",
         oauth: {
           clientId: "https://claude.ai/oauth/claude-code-client-metadata",
-          scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write invoices:read invoices:drafts:write contact_edits:write signals:write bookings:write",
+          scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write invoices:read invoices:drafts:write contact_edits:write signals:write bookings:write history:read",
           authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
         },
       },
@@ -66,8 +66,9 @@ test("both marketplace catalogs resolve the same package", async () => {
   assert.equal(codex.plugins[0].policy.authentication, "ON_INSTALL");
 });
 
-test("package has eleven shared skills and an issued OpenAI app mapping", async () => {
+test("package has fifteen shared skills and an issued OpenAI app mapping", async () => {
   const skillNames = [
+    "bot-builder",
     "calendar",
     "calendar-booking",
     "campaigns",
@@ -76,9 +77,12 @@ test("package has eleven shared skills and an issued OpenAI app mapping", async 
     "imessage-extras",
     "inbox-triage",
     "invoices",
+    "past-texts",
     "reports",
     "safe-draft-and-send",
     "templates",
+    "voice-agents",
+    "workflow-builder",
   ];
   const skillDirectories = (await readdir(path.join(PLUGIN, "skills"))).sort();
   assert.deepEqual(skillDirectories, skillNames);

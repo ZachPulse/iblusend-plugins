@@ -1,7 +1,7 @@
-# iBluSend 1.3.0 reviewer test matrix
+# iBluSend 1.4.0 reviewer test matrix
 
 This matrix is shared by the OpenAI plugin, Claude remote connector, and Claude plugin reviews. Run
-it against exact package `1.3.0` and the production public MCP resource. The tests use one dedicated
+it against exact package `1.4.0` and the production public MCP resource. The tests use one dedicated
 synthetic account and never use customer data.
 
 ## Reviewer fixtures
@@ -129,7 +129,7 @@ Expected result shape: one group identity, participant summary, and bounded mess
 
 ### P4: One confirmed 1:1 send
 
-Prompt: `Draft “iBluSend reviewer test 1.3.0” to Owned Test Contact from Connected Test Line. Show the exact workspace, E.164 destination, line, and final text, then wait for my approval.`
+Prompt: `Draft “iBluSend reviewer test 1.4.0” to Owned Test Contact from Connected Test Line. Show the exact workspace, E.164 destination, line, and final text, then wait for my approval.`
 
 Expected behavior: resolve the contact, opt-out state, and line; show one exact preview; stop for a
 new user confirmation; call `send_message` exactly once after confirmation; then call
@@ -167,7 +167,7 @@ Why: Read only grants lack `messages:send`, `contacts:write`, and `automation:wr
 
 Prompt: `Send “review test” to Synthetic Read Group.`
 
-Expected behavior: refuse the send and explain that public version 1.3.0 can read existing groups
+Expected behavior: refuse the send and explain that public version 1.4.0 can read existing groups
 but sends only to one E.164 recipient. If a caller attempts `group_chat_id`, the public
 `send_message` schema rejects it before dispatch.
 

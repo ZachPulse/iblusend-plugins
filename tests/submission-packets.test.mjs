@@ -30,8 +30,8 @@ test("release candidate version and public URLs stay aligned", async () => {
     claudeMarketplace.version,
     claudeMarketplace.plugins[0].version,
   ];
-  assert.deepEqual(new Set(versions), new Set(["1.3.0"]));
-  assert.match(checklist, /Package version is `1\.3\.0` everywhere/);
+  assert.deepEqual(new Set(versions), new Set(["1.4.0"]));
+  assert.match(checklist, /Package version is `1\.4\.0` everywhere/);
 
   assert.equal(brand.legal.homepage, "https://iblusend.com/features/ai-assistants");
   assert.equal(brand.legal.terms, "https://iblusend.com/ai-usage-terms");
@@ -102,7 +102,7 @@ test("OpenAI packet carries current portal, identity, scan, and review gates", a
     "https://iblusend.com/ai-usage-terms",
     "five positive cases, three negative cases",
     "openai-apps-challenge",
-    "Initial public submission of iBluSend 1.3.0",
+    "Initial public submission of iBluSend 1.4.0",
   ]) {
     assert.ok(packet.includes(required), required);
   }
