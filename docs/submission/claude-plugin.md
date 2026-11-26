@@ -1,6 +1,6 @@
 # Claude plugin directory submission packet
 
-This packet covers the public iBluSend `1.4.0` plugin for Claude Code and Cowork. The plugin bundles
+This packet covers the public iBluSend `1.5.0` plugin for Claude Code and Cowork. The plugin bundles
 the same remote iBluSend connector with eleven guarded skills. It is separate from the Claude
 Connectors Directory entry. Preparing it does not authorize a submission or publication.
 
@@ -16,7 +16,7 @@ Official references:
 | Field | Value |
 |---|---|
 | Name | iBluSend |
-| Version | `1.4.0` |
+| Version | `1.5.0` |
 | Category | Productivity |
 | Public repository | `https://github.com/ZachPulse/iblusend-plugins` |
 | Plugin path | `plugins/iblusend` |
@@ -87,7 +87,7 @@ merge and separate submission approval.
 
 Release notes:
 
-> Initial public release of iBluSend 1.4.0 for Claude Code and Cowork. The plugin combines the
+> Initial public release of iBluSend 1.5.0 for Claude Code and Cowork. The plugin combines the
 > production iBluSend OAuth connector with inbox triage, safe one-to-one draft and send, and
 > contact/device compliance skills, plus a skill for each area the person ticks on the Connect
 > screen: reports, templates, campaigns, calendar, invoices, contact edits, iMessage extras and
@@ -96,7 +96,7 @@ Release notes:
 > booking reach only contacts the person approves, and a booking waits for a preview and a confirm
 > code. Every write requires Read and act consent plus a fresh preview and confirmation.
 
-Only iBluSend is submitted in version 1.4.0. Generated agency bundles and the iMessage Sender
+Only iBluSend is submitted in version 1.5.0. Generated agency bundles and the iMessage Sender
 reference stay private unless their publisher later owns and approves a separate submission.
 Provider submission, reviewer-requested behavior changes, publication, and the Claude customer flag
 remain separate owner approvals.

@@ -29,7 +29,8 @@
           "contact_edits:write",
           "signals:write",
           "bookings:write",
-          "history:read"
+          "history:read",
+          "bot_live:write"
         ]
       }
     }

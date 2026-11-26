@@ -16,6 +16,7 @@ import {
 } from "./area-skills.mjs";
 import {
   BUILDER_AREAS,
+  renderBotLiveSection,
   renderBuilderAccessSection,
   renderDraftOnlySection,
 } from "./builder-skills.mjs";
@@ -118,6 +119,8 @@ const IBLUSEND_CLAUDE_OAUTH = Object.freeze({
     "signals:write",
     "bookings:write",
     "history:read",
+    // Switch bots on and off: act only, granted only beside BluBot (server order puts it last).
+    "bot_live:write",
   ].join(" "),
   authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
 });
@@ -374,6 +377,9 @@ async function validateSkill(pluginRoot, skillName, errors) {
   }
   if (builder?.draftScope && !contents.includes(renderDraftOnlySection(builder))) {
     errors.push(`${skillName}: drafts-only rules must exactly match the canonical artifact`);
+  }
+  if (builder?.liveScope && !contents.includes(renderBotLiveSection(builder))) {
+    errors.push(`${skillName}: switch-on rules must exactly match the canonical artifact`);
   }
   let frontmatter = "";
   if (!contents.startsWith("---\n")) {

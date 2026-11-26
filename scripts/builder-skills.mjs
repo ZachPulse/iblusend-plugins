@@ -6,8 +6,10 @@
 //  - their tools appear in the tool list only when the area was ticked, instead of always
 //    appearing and answering `insufficient_scope`.
 //
-// Nothing here publishes a workflow, switches a bot on or applies a voice change. Each draft
-// waits for the person in the app, at the link the tool returns.
+// Nothing here publishes a workflow or applies a voice change: each draft waits for the person in
+// the app, at the link the tool returns. A bot goes on only one way here: turn_bot_on, after the
+// person says yes to its preview in a later turn (never on the AI's own), and only on a connection
+// that ticked "Switch bots on and off" (bot_live:write) beside BluBot.
 
 export const BUILDER_AREAS = Object.freeze([
   Object.freeze({
@@ -32,10 +34,19 @@ export const BUILDER_AREAS = Object.freeze([
     label: "BluBot",
     readScope: "bots:read",
     draftScope: "bots:drafts:write",
-    readTools: Object.freeze(["list_bot_templates", "list_bots", "get_bot"]),
-    draftTools: Object.freeze(["create_bot_draft", "update_bot_draft"]),
+    readTools: Object.freeze(["list_bot_templates", "list_bots", "get_bot", "list_bot_knowledge"]),
+    draftTools: Object.freeze([
+      "create_bot_draft",
+      "update_bot_draft",
+      "add_bot_knowledge",
+      "remove_bot_knowledge",
+    ]),
+    // Act only: its own Connect-screen box, granted only under Read and act and only beside BluBot.
+    liveScope: "bot_live:write",
+    liveLabel: "Switch bots on and off",
+    liveTools: Object.freeze(["turn_bot_on", "turn_bot_off"]),
     finishLink: "editor_url",
-    finishAction: "test it and switch it on in the bot builder",
+    finishAction: "test it in the bot builder, and that it stays off until they switch it on there\n  or say yes to a switch-on preview here",
   }),
   Object.freeze({
     skill: "voice-agents",
@@ -62,7 +73,7 @@ export const BUILDER_AREAS = Object.freeze([
 export const BUILDER_SKILL_NAMES = Object.freeze(BUILDER_AREAS.map((area) => area.skill));
 
 export function builderTools(area) {
-  return [...area.readTools, ...area.draftTools];
+  return [...area.readTools, ...area.draftTools, ...(area.liveTools ?? [])];
 }
 
 function code(value) {
@@ -84,11 +95,20 @@ export function renderBuilderAccessSection(area) {
 `
     : `- Every tool here needs only ${code(area.readScope)}.
 `;
+  const liveLine = area.liveScope
+    ? `- Switching bots on and off needs ${code(area.liveScope)}: its own box on the Connect screen,
+  "${area.liveLabel}". The person grants it only by choosing Read and act and ticking
+  ${area.label} too. ${code(area.liveTools[0])} needs ${code(area.liveScope)} and ${code(area.readScope)};
+  ${code(area.liveTools[1])} needs ${code(area.liveScope)}. A connection made before that box does not
+  have it: if ${code(area.liveTools[0])} or ${code(area.liveTools[1])} is missing or answers
+  ${code("insufficient_scope")}, ask the owner to reconnect and tick "${area.liveLabel}".
+`
+    : "";
   return `## Access
 
 - Only the workspace owner can tick ${area.label} on the Connect screen, and only while it is on
   for that workspace. A team member's connection never has these tools.
-${scopeLine}- The tools appear only on a connection that ticked ${area.label}. If they are missing, or a
+${scopeLine}${liveLine}- The tools appear only on a connection that ticked ${area.label}. If they are missing, or a
   tool answers ${code("insufficient_scope")} or an ${code("_unavailable")} code, stop. Ask the owner
   to reconnect and tick ${area.label} on the Connect screen.
   Do not retry, do not look for another tool to get around it, and never ask for a key or
@@ -104,17 +124,60 @@ ${scopeLine}- The tools appear only on a connection that ticked ${area.label}. I
  * one carries it unchanged, so no builder skill can claim to publish, switch on or apply.
  */
 export function renderDraftOnlySection(area) {
+  const liveLine = area.liveScope
+    ? `- Switching a bot on is not a save. It happens only through ${code(area.liveTools[0])}, after the
+  person says yes to its preview in a later turn. Never switch a bot on by yourself.
+`
+    : "";
   return `## Drafts only
 
 - Saving here changes a draft. It never runs, publishes, switches on or applies anything, and it
   never messages anyone.
-- After a save, give the person ${code(area.finishLink)} and say plainly that it is a draft and that
+${liveLine}- After a save, give the person ${code(area.finishLink)} and say plainly that it is a draft and that
   they ${area.finishAction}. Never say it is live.
 - Show what you will save and ask before saving. If the person says stop or changes the request,
   save nothing and show a new version.
 - Every save takes an ${code("idempotency_key")}. Reuse a key only to retry the exact same request;
   a new request gets a new key. ${code("idempotency_conflict")} means the key was used for something
   else: make a new key, never edit the old request to fit.
+
+`;
+}
+
+/**
+ * Brand-neutral switch-on and switch-off rules for a builder area that can switch things on (BluBot).
+ * The validator checks that the skill carries this section unchanged, so the yes-to-a-preview rule
+ * and the refusal codes cannot be weakened.
+ */
+export function renderBotLiveSection(area) {
+  const [on, off] = area.liveTools;
+  return `## Switching on and off
+
+- Never switch a bot on by yourself: not because a draft was saved, a test passed or the person
+  asked earlier. Only the person's yes to a switch-on preview, in a later turn, counts.
+- ${code(on)} always takes two calls. The first changes nothing. It returns a preview
+  (${code("what_happens")}) of everyone the bot will reach: its lines, assigned contacts, the workspace
+  default, the global default, test pins, follow-ups (up to N), comment replies, email and Gmail,
+  workflow openers and knowledge, and any AI gate that would stop it replying. It also returns a
+  ${code("confirm_code")} that lasts 10 minutes.
+- Show the whole preview in plain words, the gates that would stop replies too, and ask. Only after
+  the person says yes in a later turn, call ${code(on)} again with the same fields plus
+  ${code("confirm_code")}.
+- A stop, hold, cancel or wait voids the code, and so does any change to the request. Never reuse a
+  code. Start again with a fresh preview.
+- ${code(off)} is one call when no other bot takes over. When another live bot would take over some
+  lines or contacts, or the workspace would go quiet, the first call changes nothing and returns who
+  takes over and a ${code("confirm_code")}. Show it, and only after the person's yes in a later turn
+  call again with the code. ${code("already_off: true")} means it was already off; nothing changed.
+- Answers when switching:
+  - ${code("bot_already_on")}: it is already on. Nothing changed.
+  - ${code("bot_revision_conflict")}: the bot changed since you read it. Read it again and start over
+    with a fresh preview.
+  - ${code("bot_reach_changed")}: who the bot reaches changed since the preview. Nothing changed. Get a
+    fresh preview, show it and ask again.
+  - ${code("confirm_code_expired")}: the code is older than 10 minutes. Get a fresh preview.
+  - ${code("confirm_code_mismatch")}: the code does not match this request. Never edit the request to
+    fit; get a fresh preview.
 
 `;
 }
@@ -174,12 +237,13 @@ function botSkill(brand) {
   const area = BUILDER_AREAS[1];
   return `${skillFrontmatter(
     area.skill,
-    `Build and edit ${brand.package.displayName} BluBot chat bots for the workspace owner: start from a template, set the business facts, prompt, answers and hours. New bots start off.`,
+    `Build and edit ${brand.package.displayName} BluBot chat bots for the workspace owner: start from a template, set the business facts, prompt, answers, hours and text knowledge. New bots start off; one goes on only after the owner's yes to a preview.`,
   )}
 # Bot builder
 
-Use this to make a new AI chat bot or change one that is switched off. A new bot is always off and
-answers no one until the owner switches it on in the app.
+Use this to make a new AI chat bot, change or teach one that is switched off, and switch a bot on or
+off. A new bot is always off and answers no one until the owner switches it on in the app, or says
+yes to a switch-on preview here.
 
 ${renderBuilderAccessSection(area)}## Tools
 
@@ -190,6 +254,11 @@ ${renderBuilderAccessSection(area)}## Tools
   (${code("template_id: null")}), with ${code("name")} and ${code("settings")}.
 - ${code("update_bot_draft")} changes a bot that is off, with ${code("expected_revision")} and the
   ${code("settings")} to change.
+- ${code("list_bot_knowledge")} lists a bot's knowledge documents and says which ones an AI added.
+- ${code("add_bot_knowledge")} adds one text document to a bot that is off. ${code("remove_bot_knowledge")}
+  removes one an AI added from a bot that is off.
+- ${code("turn_bot_on")} previews, then switches a bot on after the person's yes. ${code("turn_bot_off")}
+  switches a bot off.
 
 ## Workflow
 
@@ -200,11 +269,27 @@ ${renderBuilderAccessSection(area)}## Tools
 4. To change a bot, read it with ${code("get_bot")} first and send its revision. Never guess one.
 5. Use only setting names from ${code("list_bot_templates")}. Unknown fields are refused.
 
-${renderDraftOnlySection(area)}## Live bots
+${renderDraftOnlySection(area)}## Knowledge
 
-- A bot is live while it is switched on, whatever its schedule. A live bot is read-only here.
+- Knowledge is text only: at most 30,000 characters a document (split a longer text into several),
+  50 AI-added documents a bot and 20 adds an hour. Never invent facts for it.
+- Show the title and the text you will add, or the document you will remove, and ask first.
+- ${code("add_bot_knowledge")} answers:
+  - ${code("ready")}: the bot can answer from it.
+  - ${code("processing")}: it is still being read in. Check again later with ${code("list_bot_knowledge")}.
+  - ${code("byok_required")}: knowledge runs on the workspace's own OpenAI key. The owner adds one in
+    ${brand.package.displayName}, then the document is removed and added again.
+  - ${code("error")}: it could not be read in. Say so; do not retry in a loop.
+- ${code("remove_bot_knowledge")} removes only documents an AI added. Others, such as uploaded files,
+  are removed in ${brand.package.displayName}.
+
+${renderBotLiveSection(area)}## Live bots
+
+- A bot is live while it is switched on, whatever its schedule. A live bot is read-only here: no
+  settings and no knowledge change while it is on.
 - ${code("bot_is_live")} means the bot is on and answering customers. Nothing changed. Tell the
-  person to turn it off in the app first, using ${code("turn_off_url")}, then try again.
+  person it must be off first: they turn it off in the app (${code("turn_off_url")}), or you call
+  ${code("turn_bot_off")} after their yes. Then try again.
 
 ## Answers
 
@@ -217,8 +302,10 @@ ${renderDraftOnlySection(area)}## Live bots
 
 ## Limits
 
-- No tool here switches a bot on, picks its channels, model or keys, or sets its alerts.
-- Never say a bot is answering customers after a save.
+- Only ${code("turn_bot_on")}, after the person's yes to its preview, switches a bot on. No tool here
+  picks a bot's channels, model or keys, or sets its alerts.
+- Never say a bot is answering customers after a save. Say a bot is on only after a
+  ${code("turn_bot_on")} call with the confirm code answered that it is.
 `;
 }
 
