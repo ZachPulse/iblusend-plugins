@@ -19,12 +19,7 @@
     "crm"
   ],
   "skills": "./skills/",
-  "mcpServers": {
-    "iblusend": {
-      "type": "http",
-      "url": "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public"
-    }
-  },
+  "mcpServers": "./.codex-mcp.json",
   "apps": "./.app.json",
   "interface": {
     "displayName": "iBluSend",
