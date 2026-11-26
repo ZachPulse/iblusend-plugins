@@ -72,7 +72,6 @@ const OPENAI_INTERFACE_KEYS = new Set([
   "logoDark",
   "longDescription",
   "privacyPolicyURL",
-  "screenshots",
   "shortDescription",
   "termsOfServiceURL",
   "websiteURL",
@@ -569,8 +568,8 @@ export async function validatePackageRoot(root) {
     errors.push("OpenAI capabilities must be a non-empty array");
   }
   if (!/^#[0-9A-F]{6}$/.test(codex.interface?.brandColor ?? "")) errors.push("OpenAI brandColor must be uppercase #RRGGBB");
-  if (!Array.isArray(codex.interface?.screenshots) || codex.interface.screenshots.length !== 3) {
-    errors.push("OpenAI manifest must contain exactly three screenshots");
+  if (codex.interface && "screenshots" in codex.interface) {
+    errors.push("OpenAI manifest must not contain interface.screenshots (OpenAI's upload check refuses it)");
   }
 
   const codexServers = codex.mcpServers;
