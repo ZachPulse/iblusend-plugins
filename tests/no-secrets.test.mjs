@@ -44,7 +44,7 @@ test("repository contains only the issued canonical OpenAI app mapping", async (
   assert.deepEqual(app, {
     apps: {
       iblusend: {
-        id: "asdk_app_6a8a543370988191833212380a71b2b9",
+        id: "asdk_app_6a8e766af7248191bfcfcbf15f3c78ed",
       },
     },
   });

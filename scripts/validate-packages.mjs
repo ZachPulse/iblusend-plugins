@@ -97,7 +97,7 @@ const CLAUDE_KEYS = new Set([
   "version",
 ]);
 const ISSUED_OPENAI_APP_IDS = new Map([
-  ["iblusend", "asdk_app_6a8a543370988191833212380a71b2b9"],
+  ["iblusend", "asdk_app_6a8e766af7248191bfcfcbf15f3c78ed"],
 ]);
 const IBLUSEND_CLAUDE_OAUTH = Object.freeze({
   clientId: "https://claude.ai/oauth/claude-code-client-metadata",
