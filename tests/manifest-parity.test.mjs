@@ -38,7 +38,7 @@ test("OpenAI and Claude manifests share identity, skills, and MCP resource", asy
   assert.deepEqual(app, {
     apps: {
       iblusend: {
-        id: "asdk_app_6a8a543370988191833212380a71b2b9",
+        id: "asdk_app_6a8e766af7248191bfcfcbf15f3c78ed",
       },
     },
   });
@@ -95,7 +95,7 @@ test("package has fifteen shared skills and an issued OpenAI app mapping", async
     assert.match(contents, new RegExp(`^---\\nname: ${skillName}\\n`));
   }
   const app = JSON.parse(await readFile(path.join(PLUGIN, ".app.json"), "utf8"));
-  assert.equal(app.apps.iblusend.id, "asdk_app_6a8a543370988191833212380a71b2b9");
+  assert.equal(app.apps.iblusend.id, "asdk_app_6a8e766af7248191bfcfcbf15f3c78ed");
   assert.deepEqual(Object.keys(app.apps.iblusend), ["id"]);
 });
 
