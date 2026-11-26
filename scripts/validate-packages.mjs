@@ -413,8 +413,8 @@ function validateManifestParity(codex, claude, errors) {
   if (codex.skills !== "./skills/" || claude.skills !== "./skills/") {
     errors.push("both provider manifests must use ./skills/");
   }
-  if (!codex.mcpServers || typeof codex.mcpServers !== "object" || Array.isArray(codex.mcpServers)) {
-    errors.push("OpenAI plugin manifest must inline its provider-neutral MCP server");
+  if (codex.mcpServers !== "./.codex-mcp.json") {
+    errors.push("OpenAI plugin manifest must use ./.codex-mcp.json (OpenAI's upload check needs a path)");
   }
   if (claude.mcpServers !== "./.mcp.json") {
     errors.push("Claude plugin manifest must use ./.mcp.json");
@@ -541,6 +541,7 @@ export async function validatePackageRoot(root) {
   const codex = await readJson(path.join(pluginRoot, ".codex-plugin", "plugin.json"), errors, "OpenAI plugin manifest");
   const claude = await readJson(path.join(pluginRoot, ".claude-plugin", "plugin.json"), errors, "Claude plugin manifest");
   const mcp = await readJson(path.join(pluginRoot, ".mcp.json"), errors, "MCP manifest");
+  const codexMcp = await readJson(path.join(pluginRoot, ".codex-mcp.json"), errors, "OpenAI MCP file");
   if (!codex || !claude || !mcp) return errors;
 
   rejectUnknown(codex, OPENAI_KEYS, errors, "OpenAI plugin manifest");
@@ -572,14 +573,14 @@ export async function validatePackageRoot(root) {
     errors.push("OpenAI manifest must not contain interface.screenshots (OpenAI's upload check refuses it)");
   }
 
-  const codexServers = codex.mcpServers;
+  const codexServers = codexMcp?.mcpServers;
   if (
     !codexServers ||
     typeof codexServers !== "object" ||
     Array.isArray(codexServers) ||
     Object.keys(codexServers).length !== 1
   ) {
-    errors.push("OpenAI plugin manifest must contain exactly one inline MCP server");
+    errors.push("OpenAI MCP file must contain exactly one MCP server");
   } else {
     const [codexServerName] = Object.keys(codexServers);
     const [codexServer] = Object.values(codexServers);

@@ -770,7 +770,9 @@ function codexManifest(brand) {
     skills: "./skills/",
     // Keep Codex on its provider-neutral MCP entry and issued app binding.
     // Claude-specific CIMD fields live only in the Claude-referenced file.
-    mcpServers: codexMcpServers(brand),
+    // OpenAI's upload check needs a path, not an inline server (2026-11-26). The file holds only the
+    // server address, never Claude's sign-in block, which lives in .mcp.json.
+    mcpServers: "./.codex-mcp.json",
     ...(brand.openai ? { apps: "./.app.json" } : {}),
     interface: {
       displayName: brand.package.displayName,
@@ -1128,6 +1130,7 @@ export function renderBrandPackage(
   addJson(`${pluginPrefix}/.codex-plugin/plugin.json`, codexManifest(brand));
   addJson(`${pluginPrefix}/.claude-plugin/plugin.json`, claudeManifest(brand));
   addJson(`${pluginPrefix}/.mcp.json`, mcpManifest(brand));
+  addJson(`${pluginPrefix}/.codex-mcp.json`, { mcpServers: codexMcpServers(brand) });
   const openAiApp = openAiAppManifest(brand);
   if (openAiApp) addJson(`${pluginPrefix}/.app.json`, openAiApp);
   addText(`${pluginPrefix}/README.md`, packageReadme(brand));

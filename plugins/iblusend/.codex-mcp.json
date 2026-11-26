@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "iblusend": {
+      "type": "http",
+      "url": "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public"
+    }
+  }
+}

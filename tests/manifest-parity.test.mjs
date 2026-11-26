@@ -22,7 +22,8 @@ test("OpenAI and Claude manifests share identity, skills, and MCP resource", asy
   }
   assert.equal(codex.skills, "./skills/");
   assert.equal(claude.skills, "./skills/");
-  assert.deepEqual(codex.mcpServers, {
+  assert.equal(codex.mcpServers, "./.codex-mcp.json");
+  assert.deepEqual(JSON.parse(await readFile(path.join(ROOT, "plugins", "iblusend", ".codex-mcp.json"), "utf8")).mcpServers, {
     iblusend: {
       type: "http",
       url: "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public",

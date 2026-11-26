@@ -184,7 +184,8 @@ test("iBluSend pins Claude CIMD OAuth while Codex and white-label packages stay 
     scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write invoices:read invoices:drafts:write contact_edits:write signals:write bookings:write history:read bot_live:write",
     authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
   });
-  assert.deepEqual(iblusendCodex.mcpServers, {
+  assert.equal(iblusendCodex.mcpServers, "./.codex-mcp.json");
+  assert.deepEqual(JSON.parse(await readFile(path.join(iblusendOutput, "plugins", "iblusend", ".codex-mcp.json"), "utf8")).mcpServers, {
     iblusend: {
       type: "http",
       url: "https://api.iblusend.com/functions/v1/agent-api/v1/mcp/public",
@@ -222,7 +223,7 @@ test("validator rejects Claude OAuth fields leaking into the OpenAI MCP entry", 
   await writeBrandPackage({ brand, outputRoot: output });
 
   const pluginRoot = path.join(output, "plugins", "iblusend");
-  const relativeManifestPath = ".codex-plugin/plugin.json";
+  const relativeManifestPath = ".codex-mcp.json";
   const manifestPath = path.join(pluginRoot, relativeManifestPath);
   const original = await readFile(manifestPath, "utf8");
   const manifest = JSON.parse(original);
