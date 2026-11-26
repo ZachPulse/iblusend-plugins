@@ -787,7 +787,7 @@ function codexManifest(brand) {
       composerIcon: "./assets/icon.png",
       logo: "./assets/logo.png",
       logoDark: "./assets/logo-dark.png",
-      screenshots: SCREENSHOTS.map(([fileName]) => `./assets/${fileName}`),
+      // OpenAI's upload check refuses interface.screenshots (2026-11-26); the listing holds them.
     },
   };
 }
