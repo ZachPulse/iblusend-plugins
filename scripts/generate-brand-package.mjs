@@ -755,7 +755,8 @@ hidden write tool or asking for a credential in chat.
 
 function codexManifest(brand) {
   return {
-    name: brand.package.slug,
+    // OpenAI's upload check: the name must be the listed plugin's own id (2026-11-26).
+    name: brand.openai?.pluginName ?? brand.package.slug,
     version: brand.package.version,
     description: brand.package.description,
     author: {

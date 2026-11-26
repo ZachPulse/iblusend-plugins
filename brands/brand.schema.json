@@ -108,6 +108,10 @@
         "appId": {
           "type": "string",
           "pattern": "^asdk_app_[0-9a-f]{32}$"
+        },
+        "pluginName": {
+          "type": "string",
+          "pattern": "^app-[0-9a-f]{32}$"
         }
       }
     },
