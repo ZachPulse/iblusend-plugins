@@ -181,7 +181,7 @@ test("iBluSend pins Claude CIMD OAuth while Codex and white-label packages stay 
   ));
   assert.deepEqual(iblusendMcp.mcpServers.iblusend.oauth, {
     clientId: "https://claude.ai/oauth/claude-code-client-metadata",
-    scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write invoices:read invoices:drafts:write contact_edits:write signals:write bookings:write history:read",
+    scopes: "workspace:read messages:read contacts:read automation:read messages:send contacts:write automation:write workflows:read workflows:drafts:write reports:read templates:read templates:drafts:write campaigns:read campaigns:drafts:write calendar:read bots:read bots:drafts:write voice:read voice:drafts:write invoices:read invoices:drafts:write contact_edits:write signals:write bookings:write history:read bot_live:write",
     authServerMetadataUrl: "https://iblusend.com/.well-known/oauth-authorization-server",
   });
   assert.deepEqual(iblusendCodex.mcpServers, {

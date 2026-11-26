@@ -23,7 +23,7 @@ Authorization header to this package.
 - `imessage-extras`: tapbacks, typing bubbles, read receipts and voice memos to approved contacts.
 - `calendar-booking`: book, move or cancel an appointment in chat after a preview and a yes.
 - `workflow-builder`: build and edit workflow drafts the owner publishes in the app.
-- `bot-builder`: build and edit chat bots; new bots start off and the owner switches them on.
+- `bot-builder`: build, edit and teach chat bots; new bots start off and go on only after the owner's yes to a preview.
 - `voice-agents`: propose a voice agent prompt or greeting the owner applies in Voice Studio.
 - `past-texts`: read the past texts the owner copied from their Mac.
 
@@ -67,13 +67,16 @@ exact preview; a booking takes a second call with the preview's confirm code.
 Only the workspace owner can tick these, and only while the feature is on for the workspace. Their
 tools appear only on a connection that ticked the area. A team member's connection never has them.
 
-| Area | Read scope | Draft scope | Tools |
+| Area | Read scope | Draft or act scope | Tools |
 |---|---|---|---|
 | Workflows | `workflows:read` | `workflows:drafts:write` | `list_workflow_blocks`, `get_workflow_block_schema`, `list_workflow_resources`, `list_workflows`, `get_workflow`, `validate_workflow_draft`, `create_workflow_draft`, `update_workflow_draft` |
-| BluBot | `bots:read` | `bots:drafts:write` | `list_bot_templates`, `list_bots`, `get_bot`, `create_bot_draft`, `update_bot_draft` |
+| BluBot | `bots:read` | `bots:drafts:write` | `list_bot_templates`, `list_bots`, `get_bot`, `list_bot_knowledge`, `create_bot_draft`, `update_bot_draft`, `add_bot_knowledge`, `remove_bot_knowledge` |
+| Switch bots on and off (with BluBot) | none | `bot_live:write` | `turn_bot_on`, `turn_bot_off` |
 | Voice agents | `voice:read` | `voice:drafts:write` | `list_voice_agents`, `get_voice_agent`, `propose_voice_agent_change` |
 | Past texts from your Mac | `history:read` | none | `list_history`, `search_history` |
 
 Saving in a builder area changes a draft only. A workflow waits for Publish in the workflow builder,
-a bot is created switched off and waits for the owner to switch it on, and a voice agent proposal
-waits for Apply in Voice Studio. Past texts only read.
+and a voice agent proposal waits for Apply in Voice Studio. A bot is created switched off. It goes
+on when the owner switches it on in the app, or, on a connection that also ticked Switch bots on and
+off (Read and act only), after the owner says yes to a switch-on preview in a later turn: the AI
+never switches a bot on by itself. Past texts only read.

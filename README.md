@@ -11,7 +11,8 @@ providers to the same workspace-bound MCP resource and supplies eleven provider-
 
 Every OAuth grant discovers thirteen messaging tools: ten read tools and three action tools that
 need Read and act. On the Connect screen the person can also tick optional areas (reports,
-templates, campaigns, calendar, invoices, and the owner-only workflows, BluBot, and voice agents).
+templates, campaigns, calendar, invoices, and the owner-only workflows, BluBot, Switch bots on and
+off, and voice agents).
 Each area is its own OAuth scope; a call without it returns `insufficient_scope`. Nothing in a read
 or draft area sends, launches, books, or charges: drafts and booking links wait for the person to
 press the button in the app. Three areas act under Read and act: contact edits, iMessage extras, and
@@ -23,9 +24,11 @@ engine, does not bypass iBluSend compliance controls, and does not ship credenti
 
 ## Repository status
 
-Version `1.4.0` adds the workflow builder, bot builder, voice agents and past texts skills, and asks
-for Past texts from your Mac on the Connect screen. Version 1.3.0 added the contact edits, iMessage
-extras, and calendar booking skills. It has **not** been submitted to or published in Anthropic's or OpenAI's provider
+Version `1.5.0` teaches the bot builder to switch a bot on or off and to add text knowledge, and
+asks for the new Switch bots on and off box (`bot_live:write`, Read and act only, beside BluBot). A
+bot goes on only after the owner says yes to a preview of everyone it will reach. Version 1.4.0
+added the workflow builder, bot builder, voice agents and past texts skills. Version 1.3.0 added
+the contact edits, iMessage extras, and calendar booking skills. It has **not** been submitted to or published in Anthropic's or OpenAI's provider
 directory. The Grok Build copy (`plugins/iblusend-grok`) is listed through a pull request to
 `xai-org/plugin-marketplace`. The iBluSend package carries the OpenAI app mapping proven in
 the private ChatGPT developer-mode beta; white-label output omits `.app.json` unless that brand has

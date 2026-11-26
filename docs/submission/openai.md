@@ -1,6 +1,6 @@
 # OpenAI universal plugin submission packet
 
-This packet is for the initial public review of iBluSend `1.4.0`. The submission serves both
+This packet is for the initial public review of iBluSend `1.5.0`. The submission serves both
 ChatGPT and Codex through the universal Plugins Directory. Preparing this file does not authorize
 creating a portal draft, submitting it for review, publishing it, or enabling iBluSend's OpenAI
 customer flag.
@@ -99,7 +99,7 @@ steps.
 
 Release notes:
 
-> Initial public submission of iBluSend 1.4.0. The plugin connects one consented iBluSend workspace
+> Initial public submission of iBluSend 1.5.0. The plugin connects one consented iBluSend workspace
 > to ten read tools and three separately scoped action tools, plus optional areas the person ticks
 > on the Connect screen: reports, templates, campaigns, calendar, invoices, contact edits, iMessage
 > extras and calendar booking. It includes guarded inbox
@@ -110,6 +110,6 @@ Release notes:
 ## Final gate
 
 Before selecting **Submit for Review**, rerun the package validators, complete every case in the
-shared test matrix against exact version `1.4.0`, verify all public URLs, confirm the secure reviewer
+shared test matrix against exact version `1.5.0`, verify all public URLs, confirm the secure reviewer
 credentials, and record the exact Git commit. Submission, reviewer-requested behavior changes,
 publication, and the OpenAI customer flag each remain separate owner approvals.

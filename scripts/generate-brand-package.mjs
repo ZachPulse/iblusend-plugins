@@ -982,9 +982,14 @@ function areaTableRows() {
 }
 
 function builderTableRows() {
-  return BUILDER_AREAS.map((area) => {
-    const tools = builderTools(area).map((tool) => `\`${tool}\``).join(", ");
-    return `| ${area.label} | \`${area.readScope}\` | ${area.draftScope ? `\`${area.draftScope}\`` : "none"} | ${tools} |`;
+  return BUILDER_AREAS.flatMap((area) => {
+    const tools = [...area.readTools, ...area.draftTools].map((tool) => `\`${tool}\``).join(", ");
+    const rows = [`| ${area.label} | \`${area.readScope}\` | ${area.draftScope ? `\`${area.draftScope}\`` : "none"} | ${tools} |`];
+    if (area.liveScope) {
+      const liveTools = area.liveTools.map((tool) => `\`${tool}\``).join(", ");
+      rows.push(`| ${area.liveLabel} (with ${area.label}) | none | \`${area.liveScope}\` | ${liveTools} |`);
+    }
+    return rows;
   }).join("\n");
 }
 
@@ -1023,7 +1028,7 @@ Authorization header to this package.
 - \`imessage-extras\`: tapbacks, typing bubbles, read receipts and voice memos to approved contacts.
 - \`calendar-booking\`: book, move or cancel an appointment in chat after a preview and a yes.
 - \`workflow-builder\`: build and edit workflow drafts the owner publishes in the app.
-- \`bot-builder\`: build and edit chat bots; new bots start off and the owner switches them on.
+- \`bot-builder\`: build, edit and teach chat bots; new bots start off and go on only after the owner's yes to a preview.
 - \`voice-agents\`: propose a voice agent prompt or greeting the owner applies in Voice Studio.
 - \`past-texts\`: read the past texts the owner copied from their Mac.
 
@@ -1060,13 +1065,15 @@ exact preview; a booking takes a second call with the preview's confirm code.
 Only the workspace owner can tick these, and only while the feature is on for the workspace. Their
 tools appear only on a connection that ticked the area. A team member's connection never has them.
 
-| Area | Read scope | Draft scope | Tools |
+| Area | Read scope | Draft or act scope | Tools |
 |---|---|---|---|
 ${builderTableRows()}
 
 Saving in a builder area changes a draft only. A workflow waits for Publish in the workflow builder,
-a bot is created switched off and waits for the owner to switch it on, and a voice agent proposal
-waits for Apply in Voice Studio. Past texts only read.
+and a voice agent proposal waits for Apply in Voice Studio. A bot is created switched off. It goes
+on when the owner switches it on in the app, or, on a connection that also ticked Switch bots on and
+off (Read and act only), after the owner says yes to a switch-on preview in a later turn: the AI
+never switches a bot on by itself. Past texts only read.
 `;
 }
 
