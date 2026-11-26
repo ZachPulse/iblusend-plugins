@@ -401,7 +401,8 @@ async function validateSkill(pluginRoot, skillName, errors) {
 }
 
 function validateManifestParity(codex, claude, errors) {
-  for (const key of ["name", "version", "description", "homepage", "repository", "license"]) {
+  // name is checked apart: OpenAI requires its listed id (app-<32 hex>) there.
+  for (const key of ["version", "description", "homepage", "repository", "license"]) {
     if (codex[key] !== claude[key]) errors.push(`provider manifest mismatch: ${key}`);
   }
   if (JSON.stringify(codex.author) !== JSON.stringify(claude.author)) {
@@ -548,7 +549,10 @@ export async function validatePackageRoot(root) {
   rejectUnknown(codex.interface, OPENAI_INTERFACE_KEYS, errors, "OpenAI plugin manifest.interface");
   rejectUnknown(claude, CLAUDE_KEYS, errors, "Claude plugin manifest");
   validateManifestParity(codex, claude, errors);
-  if (codex.name !== slug || claude.name !== slug) errors.push("plugin directory and manifest names must match");
+  // OpenAI requires the listed plugin's own id (app-<32 hex>) as the name; the folder stays the slug.
+  if ((codex.name !== slug && !/^app-[0-9a-f]{32}$/.test(codex.name ?? "")) || claude.name !== slug) {
+    errors.push("plugin directory and manifest names must match");
+  }
   if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-+][0-9A-Za-z.-]+)?$/.test(codex.version ?? "")) {
     errors.push("plugin version must be semantic versioning");
   }
@@ -690,7 +694,7 @@ export async function validatePackageRoot(root) {
     }
   }
 
-  if (codexEntry?.name !== codex.name || claudeEntry?.name !== claude.name) errors.push("catalog and manifest names differ");
+  if (codexEntry?.name !== slug || claudeEntry?.name !== claude.name) errors.push("catalog and manifest names differ");
   if (claudeEntry?.version !== claude.version) errors.push("Claude catalog and manifest versions differ");
   await validateChecksums(pluginRoot, errors);
   await validatePluginText(pluginRoot, errors);

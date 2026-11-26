@@ -37,7 +37,8 @@
     }
   },
   "openai": {
-    "appId": "asdk_app_6a8a543370988191833212380a71b2b9"
+    "appId": "asdk_app_6a8a543370988191833212380a71b2b9",
+    "pluginName": "app-6a8e766af7248191bfcfcbf15f3c78ed"
   },
   "branding": {
     "primaryColor": "#968EF6",

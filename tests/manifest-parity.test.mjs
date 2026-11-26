@@ -17,9 +17,12 @@ test("OpenAI and Claude manifests share identity, skills, and MCP resource", asy
   const mcp = await loadJson("plugins/iblusend/.mcp.json");
   const app = await loadJson("plugins/iblusend/.app.json");
 
-  for (const key of ["name", "version", "description", "author", "homepage", "repository", "license", "keywords"]) {
+  for (const key of ["version", "description", "author", "homepage", "repository", "license", "keywords"]) {
     assert.deepEqual(codex[key], claude[key], key);
   }
+  // OpenAI requires the listed plugin's own id as the name (upload check, 2026-11-26).
+  assert.equal(codex.name, "app-6a8e766af7248191bfcfcbf15f3c78ed");
+  assert.equal(claude.name, "iblusend");
   assert.equal(codex.skills, "./skills/");
   assert.equal(claude.skills, "./skills/");
   assert.equal(codex.mcpServers, "./.codex-mcp.json");
