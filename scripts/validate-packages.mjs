@@ -73,6 +73,7 @@ const OPENAI_INTERFACE_KEYS = new Set([
   "longDescription",
   "privacyPolicyURL",
   "shortDescription",
+  "supportURL",
   "termsOfServiceURL",
   "websiteURL",
 ]);
@@ -95,9 +96,6 @@ const CLAUDE_KEYS = new Set([
   "supportUrl",
   "termsOfServiceUrl",
   "version",
-]);
-const ISSUED_OPENAI_APP_IDS = new Map([
-  ["iblusend", "asdk_app_6a8e766af7248191bfcfcbf15f3c78ed"],
 ]);
 const IBLUSEND_CLAUDE_OAUTH = Object.freeze({
   clientId: "https://claude.ai/oauth/claude-code-client-metadata",
@@ -573,6 +571,10 @@ export async function validatePackageRoot(root) {
     errors.push("OpenAI capabilities must be a non-empty array");
   }
   if (!/^#[0-9A-F]{6}$/.test(codex.interface?.brandColor ?? "")) errors.push("OpenAI brandColor must be uppercase #RRGGBB");
+  if (typeof codex.interface?.shortDescription !== "string" || codex.interface.shortDescription.length > 30) {
+    errors.push("OpenAI interface.shortDescription must be 30 characters or fewer (OpenAI's listing subtitle)");
+  }
+  requireHttps(codex.interface?.supportURL, errors, "OpenAI supportURL");
   if (codex.interface && "screenshots" in codex.interface) {
     errors.push("OpenAI manifest must not contain interface.screenshots (OpenAI's upload check refuses it)");
   }
@@ -641,39 +643,13 @@ export async function validatePackageRoot(root) {
     }
   }
 
-  const appJson = path.join(pluginRoot, ".app.json");
-  if (await fileExists(appJson)) {
-    const app = await readJson(appJson, errors, "OpenAI app manifest");
-    rejectUnknown(app, new Set(["apps"]), errors, "OpenAI app manifest");
-    if (codex.apps !== "./.app.json") {
-      errors.push("OpenAI plugin manifest must reference ./.app.json when an app mapping exists");
-    }
-    const appEntries = app?.apps;
-    if (!appEntries || typeof appEntries !== "object" || Array.isArray(appEntries)) {
-      errors.push("OpenAI app manifest.apps must be an object");
-    } else if (Object.keys(appEntries).length !== 1 || !Object.hasOwn(appEntries, slug)) {
-      errors.push("OpenAI app manifest must contain exactly the package slug mapping");
-    } else {
-      const mapping = appEntries[slug];
-      if (!mapping || typeof mapping !== "object" || Array.isArray(mapping)) {
-        errors.push("OpenAI app mapping must be an object");
-      } else {
-        if (!/^asdk_app_[0-9a-f]{32}$/.test(mapping.id ?? "")) {
-          errors.push("OpenAI app mapping id must be a canonical asdk_app identifier");
-        }
-        const issuedAppId = ISSUED_OPENAI_APP_IDS.get(slug);
-        if (issuedAppId && mapping.id !== issuedAppId) {
-          errors.push(`OpenAI app mapping id for ${slug} must equal its issued identifier`);
-        }
-        for (const key of Object.keys(mapping)) {
-          if (key !== "id") {
-            errors.push(`OpenAI app mapping.${key} is not an accepted field`);
-          }
-        }
-      }
-    }
-  } else if (codex.apps !== undefined) {
-    errors.push("OpenAI plugin manifest must not reference .app.json when no app mapping exists");
+  // OpenAI refuses both at submission (2026-11-27): "Plugins with .app.json cannot be submitted.
+  // Declare an MCP server URL instead." The server comes from .codex-mcp.json.
+  if (await fileExists(path.join(pluginRoot, ".app.json"))) {
+    errors.push("OpenAI plugins with .app.json cannot be submitted; declare the MCP server in .codex-mcp.json");
+  }
+  if (codex.apps !== undefined) {
+    errors.push("OpenAI plugin manifest must not have an apps field");
   }
   await validateSkillInventory(pluginRoot, errors);
   for (const skillName of REQUIRED_SKILLS) await validateSkill(pluginRoot, skillName, errors);

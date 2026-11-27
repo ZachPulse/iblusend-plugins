@@ -15,5 +15,6 @@
 - [ ] OpenAI's official plugin validator passes.
 - [ ] Claude's strict plugin and marketplace validators pass.
 - [ ] No credentials, customer identifiers, local machine paths, or generated agency archives exist.
-- [ ] `.app.json` maps this package to the issued OpenAI app and the OpenAI manifest references it.
+- [ ] No `.app.json` and no `apps` field: OpenAI refuses both at submission; the MCP server comes from `.codex-mcp.json`.
+- [ ] The OpenAI subtitle (`interface.shortDescription`) is 30 characters or fewer and `interface.supportURL` is set.
 - [ ] Public submission has separate owner approval.

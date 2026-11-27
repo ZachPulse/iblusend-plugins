@@ -923,72 +923,68 @@ test("brand schema rejects unsafe OAuth metadata and secret-bearing fields", asy
   }
 });
 
-test("app-less brand refuses a stale app mapping in reused output", async (t) => {
+test("generator writes no .app.json and refuses a leftover one in reused output", async (t) => {
+  // OpenAI refuses a plugin with .app.json at submission (2026-11-27).
   const output = await makeTemp(t, "stale-app");
   const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
   await writeBrandPackage({ brand, outputRoot: output });
-  const appLessBrand = structuredClone(brand);
-  delete appLessBrand.openai;
-  await assert.rejects(
-    writeBrandPackage({ brand: appLessBrand, outputRoot: output }),
-    /Refusing to retain stale or unexpected OpenAI app mapping/,
-  );
-});
-
-test("cross-brand reused output refuses another brand's stale app mapping", async (t) => {
-  const output = await makeTemp(t, "stale-cross-brand-app");
-  const { brand: registeredBrand } = await loadAndValidateBrand(
-    path.join(REPOSITORY_ROOT, "brands", "iblusend.json"),
-  );
-  const { brand: appLessBrand } = await loadAndValidateBrand(
-    path.join(REPOSITORY_ROOT, "brands", "imessage-sender.example.json"),
-  );
-  await writeBrandPackage({ brand: registeredBrand, outputRoot: output });
-  await assert.rejects(
-    writeBrandPackage({ brand: appLessBrand, outputRoot: output }),
-    /Refusing to retain stale or unexpected OpenAI app mapping/,
-  );
-});
-
-test("generator refuses a symlinked OpenAI app mapping", async (t) => {
-  const output = await makeTemp(t, "symlinked-app");
-  const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
-  await writeBrandPackage({ brand, outputRoot: output });
-
   const appPath = path.join(output, "plugins", "iblusend", ".app.json");
-  await rm(appPath);
-  await symlink(".mcp.json", appPath);
+  await assert.rejects(readFile(appPath), /ENOENT/);
+  const codexManifest = JSON.parse(
+    await readFile(path.join(output, "plugins", "iblusend", ".codex-plugin", "plugin.json"), "utf8"),
+  );
+  assert.equal(codexManifest.apps, undefined);
+  assert.equal(codexManifest.interface.shortDescription, brand.package.subtitle);
+  assert.ok(codexManifest.interface.shortDescription.length <= 30);
+  assert.equal(codexManifest.interface.supportURL, brand.legal.support);
+
+  await writeFile(appPath, '{"apps":{"iblusend":{"id":"asdk_app_6a8e766af7248191bfcfcbf15f3c78ed"}}}\n');
   await assert.rejects(
     writeBrandPackage({ brand, outputRoot: output }),
     /Refusing to retain stale or unexpected OpenAI app mapping/,
   );
 });
 
-test("validator rejects the previous iBluSend app id and unknown app fields", async (t) => {
-  const output = await makeTemp(t, "invalid-issued-app");
+test("generator refuses a symlinked .app.json", async (t) => {
+  const output = await makeTemp(t, "symlinked-app");
+  const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
+  await writeBrandPackage({ brand, outputRoot: output });
+  await symlink(".mcp.json", path.join(output, "plugins", "iblusend", ".app.json"));
+  await assert.rejects(
+    writeBrandPackage({ brand, outputRoot: output }),
+    /Refusing to retain stale or unexpected OpenAI app mapping/,
+  );
+});
+
+test("validator refuses .app.json, an apps field, a long subtitle and a missing support URL", async (t) => {
+  const output = await makeTemp(t, "openai-submission-findings");
   const { brand } = await loadAndValidateBrand(path.join(REPOSITORY_ROOT, "brands", "iblusend.json"));
   await writeBrandPackage({ brand, outputRoot: output });
 
   const pluginRoot = path.join(output, "plugins", "iblusend");
-  const appPath = path.join(pluginRoot, ".app.json");
-  const app = JSON.parse(await readFile(appPath, "utf8"));
-  app.apps.iblusend.id = "asdk_app_6a8904c0880c8191bbd17d77013abc1f";
-  app.unexpected = true;
-  const appContents = `${JSON.stringify(app, null, 2)}\n`;
-  await writeFile(appPath, appContents);
-
+  await writeFile(path.join(pluginRoot, ".app.json"), '{"apps":{}}\n');
+  const manifestPath = path.join(pluginRoot, ".codex-plugin", "plugin.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.apps = "./.app.json";
+  manifest.interface.shortDescription = "Safely triage conversations and send confirmed messages";
+  delete manifest.interface.supportURL;
+  const manifestContents = `${JSON.stringify(manifest, null, 2)}\n`;
+  await writeFile(manifestPath, manifestContents);
   const checksumPath = path.join(pluginRoot, "CHECKSUMS.sha256");
-  const appDigest = createHash("sha256").update(appContents).digest("hex");
-  const checksums = (await readFile(checksumPath, "utf8")).replace(
-    /^[a-f0-9]{64}  \.app\.json$/m,
-    `${appDigest}  .app.json`,
+  const digest = createHash("sha256").update(manifestContents).digest("hex");
+  await writeFile(
+    checksumPath,
+    (await readFile(checksumPath, "utf8")).replace(
+      /^[a-f0-9]{64}  \.codex-plugin\/plugin\.json$/m,
+      `${digest}  .codex-plugin/plugin.json`,
+    ),
   );
-  await writeFile(checksumPath, checksums);
 
   const errors = await validatePackageRoot(output);
-  assert.ok(errors.includes("OpenAI app manifest.unexpected is not an accepted field"));
-  assert.ok(errors.includes("OpenAI app mapping id for iblusend must equal its issued identifier"));
-  assert.equal(errors.some((error) => error.includes("checksum mismatch")), false);
+  assert.ok(errors.some((error) => error.includes(".app.json cannot be submitted")), errors.join("\n"));
+  assert.ok(errors.some((error) => error.includes("must not have an apps field")), errors.join("\n"));
+  assert.ok(errors.some((error) => error.includes("shortDescription must be 30 characters or fewer")), errors.join("\n"));
+  assert.ok(errors.some((error) => error.includes("OpenAI supportURL")), errors.join("\n"));
 });
 
 test("iMessage Sender output has no unintended iBluSend branding", async (t) => {

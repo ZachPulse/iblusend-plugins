@@ -20,10 +20,9 @@
   ],
   "skills": "./skills/",
   "mcpServers": "./.codex-mcp.json",
-  "apps": "./.app.json",
   "interface": {
     "displayName": "iBluSend",
-    "shortDescription": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
+    "shortDescription": "iMessage and SMS for your CRM",
     "longDescription": "Connect one iBluSend workspace to read conversations, contacts, devices, groups, delivery, opt-out and bot status, and send one confirmed message at a time. Areas the person ticks add reports, templates, campaigns, the calendar and invoices (drafts only; nothing launches or charges), plus contact edits, iMessage extras and calendar booking under Read and act, only for contacts the person approves.",
     "developerName": "iBluSend",
     "category": "Productivity",
@@ -33,6 +32,7 @@
       "Write"
     ],
     "websiteURL": "https://iblusend.com",
+    "supportURL": "https://iblusend.com/support",
     "privacyPolicyURL": "https://iblusend.com/privacy",
     "termsOfServiceURL": "https://iblusend.com/ai-usage-terms",
     "defaultPrompt": [

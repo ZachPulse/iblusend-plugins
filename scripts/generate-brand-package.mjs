@@ -774,15 +774,18 @@ function codexManifest(brand) {
     // OpenAI's upload check needs a path, not an inline server (2026-11-26). The file holds only the
     // server address, never Claude's sign-in block, which lives in .mcp.json.
     mcpServers: "./.codex-mcp.json",
-    ...(brand.openai ? { apps: "./.app.json" } : {}),
+    // No apps field and no .app.json: OpenAI refuses both at submission (2026-11-27,
+    // "Plugins with .app.json cannot be submitted. Declare an MCP server URL instead.").
     interface: {
       displayName: brand.package.displayName,
-      shortDescription: brand.package.description,
+      // OpenAI's listing subtitle: 30 characters at most (submission check, 2026-11-27).
+      shortDescription: brand.package.subtitle,
       longDescription: brand.package.longDescription,
       developerName: brand.publisher.developerName,
       category: brand.package.category,
       capabilities: brand.package.capabilities,
       websiteURL: brand.legal.website,
+      supportURL: brand.legal.support,
       privacyPolicyURL: brand.legal.privacy,
       termsOfServiceURL: brand.legal.terms,
       defaultPrompt: brand.copy.starterPrompts,
@@ -800,17 +803,6 @@ function codexMcpServers(brand) {
     [brand.mcp.serverName]: {
       type: "http",
       url: brand.mcp.resourceUrl,
-    },
-  };
-}
-
-function openAiAppManifest(brand) {
-  if (!brand.openai) return null;
-  return {
-    apps: {
-      [brand.package.slug]: {
-        id: brand.openai.appId,
-      },
     },
   };
 }
@@ -1098,9 +1090,8 @@ function submissionChecklist(brand) {
 - [ ] OpenAI's official plugin validator passes.
 - [ ] Claude's strict plugin and marketplace validators pass.
 - [ ] No credentials, customer identifiers, local machine paths, or generated agency archives exist.
-${brand.openai
-    ? "- [ ] `.app.json` maps this package to the issued OpenAI app and the OpenAI manifest references it."
-    : "- [ ] `.app.json` remains absent until this brand receives its own OpenAI portal identifier."}
+- [ ] No \`.app.json\` and no \`apps\` field: OpenAI refuses both at submission; the MCP server comes from \`.codex-mcp.json\`.
+- [ ] The OpenAI subtitle (\`interface.shortDescription\`) is 30 characters or fewer and \`interface.supportURL\` is set.
 - [ ] Public submission has separate owner approval.
 `;
 }
@@ -1132,8 +1123,6 @@ export function renderBrandPackage(
   addJson(`${pluginPrefix}/.claude-plugin/plugin.json`, claudeManifest(brand));
   addJson(`${pluginPrefix}/.mcp.json`, mcpManifest(brand));
   addJson(`${pluginPrefix}/.codex-mcp.json`, { mcpServers: codexMcpServers(brand) });
-  const openAiApp = openAiAppManifest(brand);
-  if (openAiApp) addJson(`${pluginPrefix}/.app.json`, openAiApp);
   addText(`${pluginPrefix}/README.md`, packageReadme(brand));
   addText(`${pluginPrefix}/SUBMISSION_CHECKLIST.md`, submissionChecklist(brand));
   addText(`${pluginPrefix}/skills/inbox-triage/SKILL.md`, inboxTriageSkill(brand));
@@ -1227,9 +1216,8 @@ export async function writeBrandPackage({
   check = false,
 }) {
   const resolvedRoot = path.resolve(outputRoot);
-  const expectedAppManifests = new Set(
-    brand.openai ? [`plugins/${brand.package.slug}/.app.json`] : [],
-  );
+  // No brand ships .app.json: OpenAI refuses it at submission (2026-11-27).
+  const expectedAppManifests = new Set();
   const unexpectedAppManifests = (await findExistingAppManifests(resolvedRoot))
     .filter(({ isRegularFile, relativePath }) => !isRegularFile || !expectedAppManifests.has(relativePath))
     .map(({ relativePath }) => relativePath);

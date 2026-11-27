@@ -6,6 +6,7 @@
     "displayName": "iMessage Sender",
     "version": "0.2.0",
     "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
+    "subtitle": "iMessage and SMS for your CRM",
     "longDescription": "Connect one iMessage Sender workspace to inspect conversations, contacts, devices, groups, delivery status, opt-out state, and bot status. Draft and send only after showing the exact destination and content for approval. If the person ticks them when connecting, it can also read reports, templates, campaigns and the calendar, save template and campaign drafts, and prepare booking links they confirm in the app.",
     "category": "Productivity",
     "capabilities": ["Interactive", "Read", "Write"],

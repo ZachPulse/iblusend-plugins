@@ -6,6 +6,7 @@
     "displayName": "iBluSend",
     "version": "1.5.0",
     "description": "Safely triage conversations, inspect contacts and devices, and send confirmed iMessages and SMS through one consented workspace.",
+    "subtitle": "iMessage and SMS for your CRM",
     "longDescription": "Connect one iBluSend workspace to read conversations, contacts, devices, groups, delivery, opt-out and bot status, and send one confirmed message at a time. Areas the person ticks add reports, templates, campaigns, the calendar and invoices (drafts only; nothing launches or charges), plus contact edits, iMessage extras and calendar booking under Read and act, only for contacts the person approves.",
     "category": "Productivity",
     "capabilities": ["Interactive", "Read", "Write"],
