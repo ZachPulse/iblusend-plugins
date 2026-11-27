@@ -15,7 +15,6 @@ test("OpenAI and Claude manifests share identity, skills, and MCP resource", asy
   const codex = await loadJson("plugins/iblusend/.codex-plugin/plugin.json");
   const claude = await loadJson("plugins/iblusend/.claude-plugin/plugin.json");
   const mcp = await loadJson("plugins/iblusend/.mcp.json");
-  const app = await loadJson("plugins/iblusend/.app.json");
 
   for (const key of ["version", "description", "author", "homepage", "repository", "license", "keywords"]) {
     assert.deepEqual(codex[key], claude[key], key);
@@ -33,15 +32,14 @@ test("OpenAI and Claude manifests share identity, skills, and MCP resource", asy
     },
   });
   assert.equal(claude.mcpServers, "./.mcp.json");
-  assert.equal(codex.apps, "./.app.json");
+  // OpenAI refuses a plugin with .app.json or an apps field at submission (2026-11-27):
+  // "Plugins with .app.json cannot be submitted. Declare an MCP server URL instead."
+  assert.equal(codex.apps, undefined);
   assert.equal(claude.apps, undefined);
-  assert.deepEqual(app, {
-    apps: {
-      iblusend: {
-        id: "asdk_app_6a8e766af7248191bfcfcbf15f3c78ed",
-      },
-    },
-  });
+  await assert.rejects(readFile(path.join(ROOT, "plugins", "iblusend", ".app.json")), /ENOENT/);
+  // OpenAI submission check (2026-11-27): subtitle at most 30 characters, support URL required.
+  assert.ok(codex.interface.shortDescription.length <= 30, codex.interface.shortDescription);
+  assert.equal(codex.interface.supportURL, "https://iblusend.com/support");
   assert.deepEqual(mcp, {
     mcpServers: {
       iblusend: {
@@ -94,9 +92,7 @@ test("package has fifteen shared skills and an issued OpenAI app mapping", async
     const contents = await readFile(path.join(PLUGIN, "skills", skillName, "SKILL.md"), "utf8");
     assert.match(contents, new RegExp(`^---\\nname: ${skillName}\\n`));
   }
-  const app = JSON.parse(await readFile(path.join(PLUGIN, ".app.json"), "utf8"));
-  assert.equal(app.apps.iblusend.id, "asdk_app_6a8e766af7248191bfcfcbf15f3c78ed");
-  assert.deepEqual(Object.keys(app.apps.iblusend), ["id"]);
+  await assert.rejects(readFile(path.join(PLUGIN, ".app.json")), /ENOENT/);
 });
 
 test("checked-in provider copy preserves group reads and the thirteen-tool scope challenge", async () => {

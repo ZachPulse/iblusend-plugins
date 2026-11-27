@@ -35,17 +35,9 @@ test("repository contains no likely secret, customer identifier, or private mach
   assert.deepEqual(findings, []);
 });
 
-test("repository contains only the issued canonical OpenAI app mapping", async () => {
+test("repository contains no OpenAI .app.json (OpenAI refuses it at submission, 2026-11-27)", async () => {
   const appManifests = (await collectFiles(ROOT))
     .map((absolute) => path.relative(ROOT, absolute).split(path.sep).join("/"))
     .filter((relative) => relative.endsWith("/.app.json") || relative === ".app.json");
-  assert.deepEqual(appManifests, ["plugins/iblusend/.app.json"]);
-  const app = JSON.parse(await readFile(path.join(ROOT, appManifests[0]), "utf8"));
-  assert.deepEqual(app, {
-    apps: {
-      iblusend: {
-        id: "asdk_app_6a8e766af7248191bfcfcbf15f3c78ed",
-      },
-    },
-  });
+  assert.deepEqual(appManifests, []);
 });
